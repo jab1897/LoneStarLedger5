@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import StatCard from "../ui/StatCard";
 import EntityCard from "../ui/EntityCard";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
+import TexasMap from "../components/TexasMap";
+
 
 const fmtInt = (n) =>
   typeof n === "number" && !Number.isNaN(n)
