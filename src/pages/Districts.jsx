@@ -4,8 +4,8 @@ import EntityCard from "../ui/EntityCard";
 import Pagination from "../ui/Pagination";
 import { fetchCSV } from "../lib/staticData";
 
-const CSV_PATH = "/data/districts.csv"; // upload this file to public/data/districts.csv
-const KEY = "DISTRICT_N";               // change if your key differs
+const CSV_PATH = "/data/Current_Districts_2025.csv";
+const KEY = "DISTRICT_N";
 
 export default function Districts() {
   const [rows, setRows] = React.useState([]);

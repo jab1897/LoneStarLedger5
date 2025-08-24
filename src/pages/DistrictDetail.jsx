@@ -5,14 +5,25 @@ import DataTable from "../ui/DataTable";
 import { fetchCSV, fetchJSON, indexBy, findFeatureByProp } from "../lib/staticData";
 import { usd, num } from "../lib/format";
 
-const DISTRICTS_CSV = "/data/districts.csv";       // upload
-const DISTRICTS_GEOJSON = "/data/districts.geojson"; // upload
-const KEY = "DISTRICT_N";  // change if your key differs
+const DISTRICTS_CSV = "/data/Current_Districts_2025.csv";
+const DISTRICTS_GEOJSON = "/data/Current_Districts_2025.geojson";
+const KEY = "DISTRICT_N";
+
+async function tryLoadDistrictFeature(id) {
+  const splitPath = `/data/geojson/district_${id}.geojson`;
+  try { return await fetchJSON(splitPath); }
+  catch {
+    const big = await fetchJSON(DISTRICTS_GEOJSON);
+    const feat = findFeatureByProp(big, KEY, id);
+    if (!feat) throw new Error(`No feature with ${KEY}=${id} in big GeoJSON`);
+    return { type: "FeatureCollection", features: [feat] };
+  }
+}
 
 export default function DistrictDetail(){
   const { id } = useParams();
   const [row, setRow] = React.useState(null);
-  const [feature, setFeature] = React.useState(null);
+  const [geom, setGeom] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
 
@@ -21,8 +32,7 @@ export default function DistrictDetail(){
     setLoading(true); setError(null);
     Promise.allSettled([
       fetchCSV(DISTRICTS_CSV),
-      // GeoJSON load is optional; keep it here for when we add the map
-      fetchJSON(DISTRICTS_GEOJSON)
+      tryLoadDistrictFeature(id)
     ]).then(([csvRes, geoRes])=>{
       if(!alive) return;
       if (csvRes.status === "fulfilled") {
@@ -31,10 +41,7 @@ export default function DistrictDetail(){
       } else {
         setError(String(csvRes.reason));
       }
-      if (geoRes.status === "fulfilled") {
-        const feat = findFeatureByProp(geoRes.value, KEY, id);
-        setFeature(feat);
-      }
+      if (geoRes.status === "fulfilled") setGeom(geoRes.value);
     }).catch(e => alive && setError(String(e)))
       .finally(()=> alive && setLoading(false));
     return ()=>{ alive = false };
@@ -52,7 +59,7 @@ export default function DistrictDetail(){
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">
-              {row?.name || row?.DISTRICT || `District ${id}`}
+              {row?.name || row?.DISTRICT || `District {id}`}
             </h1>
             <p className="text-gray-600 mt-1">{row?.county || row?.COUNTY || ""}</p>
           </div>
@@ -64,27 +71,29 @@ export default function DistrictDetail(){
         </div>
       </header>
 
+      <section className="bg-white border rounded-2xl p-6 space-y-2">
+        <h2 className="text-xl font-bold">Geometry</h2>
+        {geom
+          ? <p className="text-gray-600">GeoJSON loaded for this district. (Map rendering comes next.)</p>
+          : <p className="text-gray-600">No geometry found for this district yet.</p>}
+      </section>
+
       <section className="bg-white border rounded-2xl p-6 space-y-3">
         <h2 className="text-xl font-bold">District attributes</h2>
         {loading && <div>Loading…</div>}
         {error && <div className="text-red-700">{error}</div>}
         {!loading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            {row ? Object.entries(row).map(([k,v])=>(
-              <div key={k} className="bg-gray-50 border rounded-xl px-3 py-2">
-                <div className="text-gray-600">{k}</div>
-                <div className="font-medium">{String(v)}</div>
-              </div>
-            )): <div>No row found in CSV for {id}.</div>}
-          </div>
+          row ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              {Object.entries(row).map(([k,v])=>(
+                <div key={k} className="bg-gray-50 border rounded-xl px-3 py-2">
+                  <div className="text-gray-600">{k}</div>
+                  <div className="font-medium break-words">{String(v)}</div>
+                </div>
+              ))}
+            </div>
+          ) : <div>No record found in CSV for ID {id}.</div>
         )}
-      </section>
-
-      <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <h2 className="text-xl font-bold">Geometry</h2>
-        {feature
-          ? <p className="text-gray-600">Feature found in GeoJSON. (Map rendering coming next.)</p>
-          : <p className="text-gray-600">No matching feature in the uploaded GeoJSON (looked for property {KEY}={id}).</p>}
       </section>
     </div>
   );
