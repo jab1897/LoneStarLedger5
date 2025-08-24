@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react"; 
 import { Link } from "react-router-dom";
 import StatCard from "../ui/StatCard";
 import EntityCard from "../ui/EntityCard";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
 import TexasMap from "../components/TexasMap";
-
 
 const fmtInt = (n) =>
   typeof n === "number" && !Number.isNaN(n)
@@ -51,26 +50,21 @@ export default function Home() {
 
         {/* Your 8 KPIs */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* (1) Sum of Total Spending */}
           <StatCard label="Total Spending" value={fmtMoney(stats?.totalSpendingSum)} to="/spending" />
-          {/* (2) Sum of Enrollment */}
           <StatCard label="Enrollment" value={fmtInt(stats?.enrollmentTotal)} to="/districts" />
-          {/* (3) Average Per-Student Spending (fixed) */}
           <StatCard label="Avg Per-Student Spending" value={fmtMoney(stats?.perStudentSpendingAvgFixed)} to="/districts" />
-          {/* (4) Sum of District Debt */}
           <StatCard label="District Debt" value={fmtMoney(stats?.districtDebtTotal)} to="/districts" />
-          {/* (5) Average Per-Pupil Debt (mean of CSV column) */}
           <StatCard label="Per-Pupil Debt" value={fmtMoney(stats?.perPupilDebtAvg)} to="/districts" />
-          {/* (6) Average Teacher Salary */}
           <StatCard label="Average Teacher Salary" value={fmtMoney(stats?.teacherSalaryAvg)} to="/districts" />
-          {/* (7) Average Principal Salary */}
           <StatCard label="Average Principal Salary" value={fmtMoney(stats?.principalSalaryAvg)} to="/districts" />
-          {/* (8) Superintendent Salary (average) */}
           <StatCard label="Superintendent Salary" value={fmtMoney(stats?.superintendentSalaryAvg)} to="/districts" />
         </div>
       </section>
 
-      {/* Keep your map + Recently viewed sections below as-is */}
+      {/* 👇 Add the map back here */}
+      <TexasMap />
+
+      {/* Recently viewed */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Recently viewed</h2>
