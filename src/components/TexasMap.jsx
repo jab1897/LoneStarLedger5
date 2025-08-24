@@ -48,7 +48,7 @@ export default function TexasMap() {
               onEachFeature={(feature, layer) => {
                 const props = feature?.properties || {};
                 const code = String(props.DISTRICT_N ?? props.DISTRICT_ID ?? "");
-                const name = String(props.DISTRICT ?? "District");
+                const name = String(props.NAME ?? props.DISTRICT ?? props.DISTNAME ?? "District");
                 const row = code && byId[code] ? byId[code] : null;
 
                 const lines = [
