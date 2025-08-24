@@ -1,22 +1,69 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { loadDistrictsCSV } from "../lib/data";
 
-const fmtNum = (n) => (n === null || n === undefined || n === "" || Number.isNaN(+n)
-  ? "—"
-  : new Intl.NumberFormat("en-US").format(+n));
+const fmtNum = (n) =>
+  n === null || n === undefined || n === "" || Number.isNaN(+n)
+    ? "—"
+    : new Intl.NumberFormat("en-US").format(+n);
+
+const isIdLike = (q) => /^\d{3,}$/.test((q || "").trim());
+
+// minimal highlighter
+function highlight(text, q) {
+  if (!q) return text;
+  const needle = q.trim();
+  if (!needle) return text;
+  const str = String(text);
+  const idx = str.toLowerCase().indexOf(needle.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {str.slice(0, idx)}
+      <mark className="bg-yellow-100 rounded px-0.5">
+        {str.slice(idx, idx + needle.length)}
+      </mark>
+      {str.slice(idx + needle.length)}
+    </>
+  );
+}
 
 export default function DistrictsPage() {
   const [rows, setRows] = useState([]);
   const [counties, setCounties] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState(new Set()); // counties
-  const [page, setPage] = useState(1);
-  const [size, setSize] = useState(20);
-  const [sort, setSort] = useState({ key: "DISTRICT", dir: "asc" }); // name-first sort
+  // URL state
+  const [sp, setSp] = useSearchParams();
   const nav = useNavigate();
+
+  const [query, setQuery] = useState(sp.get("q") || "");
+  const [selected, setSelected] = useState(
+    new Set((sp.get("county") || "").split(",").filter(Boolean))
+  );
+  const [page, setPage] = useState(Number(sp.get("p") || 1));
+  const [size, setSize] = useState(Number(sp.get("s") || 20));
+  const [sort, setSort] = useState({
+    key: sp.get("sort") || "DISTRICT", // name-first
+    dir: sp.get("dir") || "asc",
+  });
+
+  // sync URL (debounced a bit)
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const next = new URLSearchParams();
+      if (query) next.set("q", query);
+      if (selected.size) next.set("county", Array.from(selected).join(","));
+      if (page !== 1) next.set("p", String(page));
+      if (size !== 20) next.set("s", String(size));
+      if (!(sort.key === "DISTRICT" && sort.dir === "asc")) {
+        next.set("sort", sort.key);
+        next.set("dir", sort.dir);
+      }
+      setSp(next, { replace: true });
+    }, 150);
+    return () => clearTimeout(id);
+  }, [query, selected, page, size, sort, setSp]);
 
   useEffect(() => {
     let on = true;
@@ -27,8 +74,7 @@ export default function DistrictsPage() {
         if (!on) return;
         setRows(rows);
         setCounties(counties);
-      } catch (e) {
-        console.error(e);
+      } catch {
         setRows([]);
         setCounties([]);
       } finally {
@@ -38,36 +84,37 @@ export default function DistrictsPage() {
     return () => { on = false; };
   }, []);
 
-  // ---- filtering/search ----
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     let list = rows;
 
     if (q) {
-      const isIdLike = /^\d{3,}$/.test(q);
       list = rows.filter((r) => {
         const id = String(r.DISTRICT_N ?? "").toLowerCase();
-        const name = String(r.DISTRICT ?? "").toLowerCase();
-        return isIdLike ? id.includes(q) : (name.includes(q) || id.includes(q));
+        const name = String(r.NAME ?? r.DISTRICT ?? r.DISTNAME ?? "").toLowerCase();
+        return isIdLike(q) ? id.includes(q) : name.includes(q) || id.includes(q);
       });
 
-      // bubble exact ID match to the top (so power users jump fast)
-      const exactIdx = list.findIndex((r) => String(r.DISTRICT_N ?? "") === query.trim());
-      if (exactIdx > 0) {
-        const hit = list.splice(exactIdx, 1)[0];
-        list.unshift(hit);
-      }
+      // bubble exact ID match
+      const exact = rows.find((r) => String(r.DISTRICT_N ?? "") === query.trim());
+      if (exact) list = [exact, ...list.filter((r) => r !== exact)];
     }
 
     if (selected.size) {
       list = list.filter((r) => selected.has(String(r.COUNTY)));
     }
 
-    // sort
+    // sort (Name uses display field: NAME ?? DISTRICT ?? DISTNAME)
     const { key, dir } = sort;
     list = [...list].sort((a, b) => {
-      const A = (a?.[key] ?? "").toString();
-      const B = (b?.[key] ?? "").toString();
+      const Araw = (key === "DISTRICT")
+        ? (a.NAME ?? a.DISTRICT ?? a.DISTNAME ?? "")
+        : (a?.[key] ?? "");
+      const Braw = (key === "DISTRICT")
+        ? (b.NAME ?? b.DISTRICT ?? b.DISTNAME ?? "")
+        : (b?.[key] ?? "");
+      const A = String(Araw);
+      const B = String(Braw);
 
       if (key === "DISTRICT_N") {
         const nA = Number(A), nB = Number(B);
@@ -93,18 +140,22 @@ export default function DistrictsPage() {
   };
 
   const goSort = (key) => {
-    setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }
-    );
+    setSort((s) => (s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }));
     setPage(1);
   };
 
-  // Enter key → if user typed an exact ID, go straight to detail
-  const tryGoToExactId = () => {
+  const handleEnter = () => {
     const typed = query.trim();
-    if (!/^\d{5,}$/.test(typed)) return;
+    if (!isIdLike(typed)) return;
     const hit = rows.find((r) => String(r.DISTRICT_N ?? "") === typed);
     if (hit) nav(`/district/${encodeURIComponent(typed)}`);
+  };
+
+  const clearAll = () => {
+    setQuery("");
+    setSelected(new Set());
+    setPage(1);
+    setSort({ key: "DISTRICT", dir: "asc" });
   };
 
   return (
@@ -114,33 +165,46 @@ export default function DistrictsPage() {
       <div className="grid grid-cols-1 md:grid-cols-[280px,1fr] gap-6">
         {/* Filters */}
         <aside className="rounded-2xl border p-4 bg-white">
-          <input
-            className="w-full border rounded-xl px-3 py-2"
-            placeholder="Search by District name or ID (e.g., Austin or 227901)"
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-            onKeyDown={(e) => { if (e.key === "Enter") tryGoToExactId(); }}
-          />
+          <div className="relative">
+            <input
+              className="w-full border rounded-xl px-3 py-2"
+              placeholder="Search by District name or ID (e.g., Austin or 227901)"
+              value={query}
+              onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+              onKeyDown={(e) => { if (e.key === "Enter") handleEnter(); }}
+            />
+            {isIdLike(query) && (
+              <button
+                onClick={handleEnter}
+                className="absolute right-1 top-1 bg-indigo-600 text-white text-xs px-2 py-1 rounded-lg"
+                title="Go to this District ID"
+              >
+                Open {query.trim()}
+              </button>
+            )}
+          </div>
 
           <div className="mt-4">
             <div className="text-sm text-gray-600 mb-2">County</div>
-            <div className="space-y-2 max-h-72 overflow-auto pr-1">
-              {counties.map((c) => (
-                <label key={c} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selected.has(c)}
-                    onChange={() => toggleCounty(c)}
-                  />
-                  <span>{c}</span>
-                </label>
-              ))}
+            <div className="flex flex-wrap gap-2 max-h-56 overflow-auto">
+              {counties.map((c) => {
+                const active = selected.has(c);
+                return (
+                  <button
+                    key={c}
+                    onClick={() => toggleCounty(c)}
+                    className={`px-3 py-1 rounded-full border text-sm ${active ? "bg-indigo-50 border-indigo-400 text-indigo-800" : "bg-white hover:bg-gray-50"}`}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <button
             className="mt-4 w-full bg-indigo-600 text-white rounded-xl py-2 font-semibold"
-            onClick={() => { setQuery(""); setSelected(new Set()); setPage(1); setSort({ key: "DISTRICT", dir: "asc" }); }}
+            onClick={clearAll}
           >
             Clear
           </button>
@@ -177,7 +241,7 @@ export default function DistrictsPage() {
               <ul className="divide-y">
                 {pageRows.map((r) => {
                   const id = String(r.DISTRICT_N ?? "—");
-                  const name = r.NAME ?? r.DISTRICT ?? r.DISTNAME ?? "—";
+                  const rawName = r.NAME ?? r.DISTRICT ?? r.DISTNAME ?? "—";
                   const county = r.COUNTY ?? "—";
                   const campuses = r.CAMPUSES;
                   const enrollment = r.ENROLLMENT;
@@ -185,7 +249,10 @@ export default function DistrictsPage() {
                   return (
                     <li key={id} className="p-4 hover:bg-gray-50">
                       <Link className="font-semibold text-indigo-700" to={`/district/${encodeURIComponent(id)}`}>
-                        {name} <span className="text-gray-500">({id})</span>
+                        {highlight(rawName, query)}{" "}
+                        <span className="text-gray-500">
+                          ({highlight(id, isIdLike(query) ? query : "")})
+                        </span>
                       </Link>
                       <div className="text-sm text-gray-600 mt-1">
                         {county} County
