@@ -49,20 +49,26 @@ export default function TexasMap() {
                 const props = feature?.properties || {};
                 const code = String(props.DISTRICT_N ?? props.DISTRICT_ID ?? "");
                 const name = String(props.NAME ?? props.DISTRICT ?? props.DISTNAME ?? "District");
+
                 const row = code && byId[code] ? byId[code] : null;
+                const enrollment = row?.ENROLLMENT;
+                const campuses = row?.CAMPUSES;
+                const ada = row?.ADA;
 
                 const lines = [
-                  `<strong>${name}</strong>`,
-                  code ? `ID: ${code}` : null,
-                  row?.ENROLLMENT ? `Enrollment: ${new Intl.NumberFormat().format(+row.ENROLLMENT)}` : null,
-                  row?.CAMPUSES ? `Campuses: ${new Intl.NumberFormat().format(+row.CAMPUSES)}` : null,
-                  row?.ADA ? `ADA: ${new Intl.NumberFormat().format(+row.ADA)}` : null,
+                  `<strong>${name}${code ? ` (${code})` : ""}</strong>`,
+                  enrollment ? `Enrollment: ${new Intl.NumberFormat("en-US").format(+enrollment)}` : null,
+                  campuses ? `Campuses: ${new Intl.NumberFormat("en-US").format(+campuses)}` : null,
+                  ada ? `ADA: ${new Intl.NumberFormat("en-US").format(+ada)}` : null,
                 ].filter(Boolean);
 
                 layer.bindTooltip(lines.join("<br/>"), { sticky: true });
+
                 layer.on("click", () => {
                   if (code) window.location.href = `/district/${encodeURIComponent(code)}`;
                 });
+                layer.on("mouseover", () => layer.setStyle({ weight: 2, fillOpacity: 0.28 }));
+                layer.on("mouseout", () => layer.setStyle({ weight: 1, fillOpacity: 0.18 }));
               }}
             />
           )}
