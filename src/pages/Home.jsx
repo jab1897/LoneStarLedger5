@@ -11,7 +11,11 @@ const fmtInt = (n) =>
 
 const fmtMoney = (n) =>
   typeof n === "number" && !Number.isNaN(n)
-    ? new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n)
+    ? new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      }).format(n)
     : "—";
 
 export default function Home() {
@@ -20,9 +24,11 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        const [s, fields] = await Promise.all([getStatewideStats(), getDetectedFields()]);
-        // Inspect what headers we detected (open DevTools console)
-        console.table(fields);
+        const [s, fields] = await Promise.all([
+          getStatewideStats(),
+          getDetectedFields(),
+        ]);
+        console.table(fields); // Inspect which headers were used
         setStats(s);
       } catch (e) {
         console.error("Failed to load statewide stats:", e);
@@ -41,24 +47,24 @@ export default function Home() {
           Explore Texas districts, campuses, and spending records in one place.
         </p>
 
-        {/* 8 KPIs */}
+        {/* Your 8 KPIs */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* 1) Sum of Total Spending */}
-          <StatCard label="Total spending" value={fmtMoney(stats?.totalSpendingSum)} to="/spending" />
-          {/* 2) Sum of Enrollment */}
-          <StatCard label="Total enrollment" value={fmtInt(stats?.enrollmentTotal)} to="/districts" />
-          {/* 3) Avg per-student spending (fixed) */}
-          <StatCard label="Avg per-student spending" value={fmtMoney(stats?.perStudentSpendingAvgFixed)} to="/districts" />
-          {/* 4) Sum of District Debt */}
-          <StatCard label="Total district debt" value={fmtMoney(stats?.districtDebtTotal)} to="/districts" />
-          {/* 5) Avg per-student debt */}
-          <StatCard label="Avg per-student debt" value={fmtMoney(stats?.perStudentDebtAvg)} to="/districts" />
-          {/* 6) Avg Teacher Salary */}
-          <StatCard label="Avg teacher salary" value={fmtMoney(stats?.teacherSalaryAvg)} to="/districts" />
-          {/* 7) Avg Principal Salary */}
-          <StatCard label="Avg principal salary" value={fmtMoney(stats?.principalSalaryAvg)} to="/districts" />
-          {/* 8) Avg Superintendent Salary */}
-          <StatCard label="Avg superintendent salary" value={fmtMoney(stats?.superintendentSalaryAvg)} to="/districts" />
+          {/* (1) Sum of Total Spending */}
+          <StatCard label="Total Spending" value={fmtMoney(stats?.totalSpendingSum)} to="/spending" />
+          {/* (2) Sum of Enrollment */}
+          <StatCard label="Enrollment" value={fmtInt(stats?.enrollmentTotal)} to="/districts" />
+          {/* (3) Average Per-Student Spending (fixed) */}
+          <StatCard label="Avg Per-Student Spending" value={fmtMoney(stats?.perStudentSpendingAvgFixed)} to="/districts" />
+          {/* (4) Sum of District Debt */}
+          <StatCard label="District Debt" value={fmtMoney(stats?.districtDebtTotal)} to="/districts" />
+          {/* (5) Average Per-Pupil Debt (mean of CSV column) */}
+          <StatCard label="Per-Pupil Debt" value={fmtMoney(stats?.perPupilDebtAvg)} to="/districts" />
+          {/* (6) Average Teacher Salary */}
+          <StatCard label="Average Teacher Salary" value={fmtMoney(stats?.teacherSalaryAvg)} to="/districts" />
+          {/* (7) Average Principal Salary */}
+          <StatCard label="Average Principal Salary" value={fmtMoney(stats?.principalSalaryAvg)} to="/districts" />
+          {/* (8) Superintendent Salary (average) */}
+          <StatCard label="Superintendent Salary" value={fmtMoney(stats?.superintendentSalaryAvg)} to="/districts" />
         </div>
       </section>
 
