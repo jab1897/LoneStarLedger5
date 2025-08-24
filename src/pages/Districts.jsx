@@ -177,7 +177,7 @@ export default function DistrictsPage() {
               <ul className="divide-y">
                 {pageRows.map((r) => {
                   const id = String(r.DISTRICT_N ?? "—");
-                  const name = r.DISTRICT ?? "—";
+                  const name = r.NAME ?? r.DISTRICT ?? r.DISTNAME ?? "—";
                   const county = r.COUNTY ?? "—";
                   const campuses = r.CAMPUSES;
                   const enrollment = r.ENROLLMENT;
