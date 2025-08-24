@@ -1,57 +1,32 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api/client";
+import StatCard from "../ui/StatCard";
+import EntityCard from "../ui/EntityCard";
 
 export default function Home() {
-  const [rows, setRows] = useState([]);
-  const [err, setErr] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .listDistrictsGeo()
-      .then((fc) => {
-        if (cancelled) return;
-        const features = Array.isArray(fc?.features) ? fc.features : [];
-        // Map to a simple shape for the list
-        const items = features.map((f) => {
-          const p = f?.properties || {};
-          return {
-            id: p.DISTRICT_N ?? p.id ?? p.code ?? "",
-            name: p.DISTNAME ?? p.name ?? "Unnamed District",
-          };
-        });
-        setRows(items.filter((r) => r.id));
-      })
-      .catch((e) => !cancelled && setErr(e.message));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  if (err) {
-    return (
-      <main>
-        <p className="error">Error: {err}</p>
-        <p className="muted">
-          Tip: Backend paths come from <code>/geojson/districts</code>.
-        </p>
-      </main>
-    );
-  }
-  if (!rows.length) return <main><p>Loading…</p></main>;
-
   return (
-    <main>
-      <h1>Lone Star Ledger</h1>
-      <p className="muted">Tap a district to view details.</p>
-      <ul className="list">
-        {rows.map((d) => (
-          <li key={d.id}>
-            <Link to={`/district/${d.id}`}>{d.name}</Link>
-          </li>
-        ))}
-      </ul>
-    </main>
+    <div className="space-y-10">
+      <section className="bg-white rounded-2xl border p-6 md:p-8">
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Education money should be easy to follow</h1>
+        <p className="mt-2 text-gray-600">Explore Texas districts, campuses, and spending records in one place.</p>
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <StatCard label="Districts" value="1,200+" to="/districts" />
+          <StatCard label="Campuses" value="9,000+" to="/campuses" />
+          <StatCard label="Line items" value="2.1M+" to="/spending" />
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">Recently viewed</h2>
+          <Link to="/districts" className="text-sm text-blue-700 hover:underline">See all</Link>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <EntityCard title="Austin ISD" subtitle="Travis County" tags={["Large","Urban"]} to="/district/227901" />
+          <EntityCard title="Northside ISD" subtitle="Bexar County" tags={["Large","Urban"]} to="/district/015915" />
+          <EntityCard title="Sharyland ISD" subtitle="Hidalgo County" tags={["Mid","Suburban"]} to="/district/108911" />
+        </div>
+      </section>
+    </div>
   );
 }
