@@ -1,52 +1,10 @@
 // src/api/client.js
-// Fixed Render base:
 const BASE = "https://lonestarledger2-0.onrender.com";
 
-// We’ll auto-detect if your API uses a prefix like /api or /v1
-const CANDIDATE_PREFIXES = ["", "/api", "/v1", "/api/v1", "/v1/api"];
-let apiPrefix = sessionStorage.getItem("apiPrefix") || null;
-let inited = false;
-
-async function probePrefix(prefix) {
-  // Try to fetch districts list as a probe; it's read-only and safe.
-  // If your API needs a different probe (e.g., /health), we can switch this.
-  const url = `${BASE}${prefix}/districts`;
-  try {
-    const res = await fetch(url, { method: "GET" });
-    if (!res.ok) return false;
-    const ct = res.headers.get("content-type") || "";
-    if (!ct.includes("application/json")) return false;
-    // quick sanity: array or object acceptable
-    await res.json();
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function ensurePrefix() {
-  if (inited) return;
-  inited = true; // prevent concurrent probes
-  if (apiPrefix) return;
-
-  for (const p of CANDIDATE_PREFIXES) {
-    const ok = await probePrefix(p);
-    if (ok) {
-      apiPrefix = p;
-      sessionStorage.setItem("apiPrefix", apiPrefix);
-      return;
-    }
-  }
-  // If we got here, none matched—fall back to "" so errors surface clearly.
-  apiPrefix = "";
-}
-
 async function request(path, options = {}) {
-  await ensurePrefix();
-  const url = `${BASE}${apiPrefix}${path}`;
-  const res = await fetch(url, {
+  const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-    ...options
+    ...options,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
@@ -56,10 +14,33 @@ async function request(path, options = {}) {
   return ct.includes("application/json") ? res.json() : res.text();
 }
 
-// Public API wrappers
+/**
+ * Expected shapes:
+ * - /geojson/districts -> { type:"FeatureCollection", features:[{ properties:{DISTRICT_N, DISTNAME, ...}, geometry:... }, ...] }
+ * - /geojson/districts.props.geojson -> likely a FeatureCollection of just properties (works the same as above)
+ * - /stats/state -> object
+ * - /summary/state -> object
+ */
 export const api = {
-  init: ensurePrefix,
-  listDistricts: () => request(`/districts`),
-  getDistrict: (id) => request(`/districts/${id}`),
-  getCampus: (id) => request(`/campuses/${id}`),
+  health: () => request("/health"),
+
+  // Geo endpoints
+  listDistrictsGeo: () => request("/geojson/districts"),
+  listDistrictProps: () => request("/geojson/districts.props.geojson"),
+
+  // Convenience: find a district by DISTRICT_N from the geo collection
+  async getDistrictById(districtN) {
+    const fc = await request("/geojson/districts");
+    const feature = (fc?.features || []).find(
+      (f) =>
+        f?.properties?.DISTRICT_N?.toString() === districtN?.toString() ||
+        f?.properties?.id?.toString() === districtN?.toString()
+    );
+    if (!feature) throw new Error(`District ${districtN} not found`);
+    return feature; // return full GeoJSON feature
+  },
+
+  // State-level data (used as working example for CampusDetail)
+  getStateStats: () => request("/stats/state"),
+  getStateSummary: () => request("/summary/state"),
 };
