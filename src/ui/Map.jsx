@@ -15,7 +15,7 @@ function FitToGeom({ geom }) {
   return null;
 }
 
-export default function Map({ geom, height = 360 }) {
+export default function Map({ geom, height = 420 }) {
   const style = useMemo(()=>({
     weight: 2,
     color: "#1d4ed8",

@@ -60,7 +60,7 @@ export default function DistrictDetail(){
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">
-              {row?.name || row?.DISTRICT || `District {id}`}
+              {row?.name || row?.DISTRICT || `District ${id}`}
             </h1>
             <p className="text-gray-600 mt-1">{row?.county || row?.COUNTY || ""}</p>
           </div>
@@ -74,11 +74,9 @@ export default function DistrictDetail(){
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
         <h2 className="text-xl font-bold">Geometry</h2>
-        {geom ? (
-          <Map geom={geom} height={420} />
-        ) : (
-          <p className="text-gray-600">No geometry found for this district yet.</p>
-        )}
+        {geom
+          ? <Map geom={geom} height={420} />
+          : <p className="text-gray-600">No geometry found for this district yet.</p>}
       </section>
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
