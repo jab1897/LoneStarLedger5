@@ -19,11 +19,10 @@ export default function TexasMap() {
     loadDistrictsCSV().then(({ byId }) => setById(byId)).catch(console.error);
   }, []);
 
-  const style = useMemo(() => ({
-    weight: 1,
-    color: "#444",
-    fillOpacity: 0.18,
-  }), []);
+  const style = useMemo(
+    () => ({ weight: 1, color: "#444", fillOpacity: 0.18 }),
+    []
+  );
 
   return (
     <section className="space-y-3">
@@ -48,7 +47,9 @@ export default function TexasMap() {
               onEachFeature={(feature, layer) => {
                 const props = feature?.properties || {};
                 const code = String(props.DISTRICT_N ?? props.DISTRICT_ID ?? "");
-                const name = String(props.NAME ?? props.DISTRICT ?? props.DISTNAME ?? "District");
+                const name = String(
+                  props.NAME ?? props.DISTRICT ?? props.DISTNAME ?? "District"
+                );
 
                 const row = code && byId[code] ? byId[code] : null;
                 const enrollment = row?.ENROLLMENT;
@@ -57,13 +58,18 @@ export default function TexasMap() {
 
                 const lines = [
                   `<strong>${name}${code ? ` (${code})` : ""}</strong>`,
-                  enrollment ? `Enrollment: ${new Intl.NumberFormat("en-US").format(+enrollment)}` : null,
-                  campuses ? `Campuses: ${new Intl.NumberFormat("en-US").format(+campuses)}` : null,
-                  ada ? `ADA: ${new Intl.NumberFormat("en-US").format(+ada)}` : null,
+                  enrollment
+                    ? `Enrollment: ${new Intl.NumberFormat("en-US").format(+enrollment)}`
+                    : null,
+                  campuses
+                    ? `Campuses: ${new Intl.NumberFormat("en-US").format(+campuses)}`
+                    : null,
+                  ada
+                    ? `ADA: ${new Intl.NumberFormat("en-US").format(+ada)}`
+                    : null,
                 ].filter(Boolean);
 
                 layer.bindTooltip(lines.join("<br/>"), { sticky: true });
-
                 layer.on("click", () => {
                   if (code) window.location.href = `/district/${encodeURIComponent(code)}`;
                 });
