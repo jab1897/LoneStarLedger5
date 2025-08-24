@@ -5,6 +5,7 @@ import Home from "./pages/Home";
 import Districts from "./pages/Districts";
 import DistrictDetail from "./pages/DistrictDetail";
 import CampusDetail from "./pages/CampusDetail";
+import Campuses from "./pages/Campuses";
 import NotFound from "./pages/NotFound";
 import Spending from "./pages/Spending";
 import About from "./pages/About";
@@ -18,6 +19,7 @@ export default function App() {
           <Suspense fallback={<div className="spinner" />} >
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/campuses" element={<Campuses />} />
               <Route path="/districts" element={<Districts />} />
               <Route path="/district/:id" element={<DistrictDetail />} />
               <Route path="/campus/:id" element={<CampusDetail />} />
