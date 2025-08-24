@@ -4,6 +4,7 @@ import StatPill from "../ui/StatPill";
 import DataTable from "../ui/DataTable";
 import { fetchCSV, fetchJSON, indexBy, findFeatureByProp } from "../lib/staticData";
 import { usd, num } from "../lib/format";
+import Map from "../ui/Map";
 
 const DISTRICTS_CSV = "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON = "/data/Current_Districts_2025.geojson";
@@ -71,11 +72,13 @@ export default function DistrictDetail(){
         </div>
       </header>
 
-      <section className="bg-white border rounded-2xl p-6 space-y-2">
+      <section className="bg-white border rounded-2xl p-6 space-y-3">
         <h2 className="text-xl font-bold">Geometry</h2>
-        {geom
-          ? <p className="text-gray-600">GeoJSON loaded for this district. (Map rendering comes next.)</p>
-          : <p className="text-gray-600">No geometry found for this district yet.</p>}
+        {geom ? (
+          <Map geom={geom} height={420} />
+        ) : (
+          <p className="text-gray-600">No geometry found for this district yet.</p>
+        )}
       </section>
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
