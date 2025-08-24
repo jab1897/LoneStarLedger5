@@ -1,1 +1,17 @@
+html, body, #root { height: 100%; margin: 0; font-family: system-ui, Arial, sans-serif; color: #111; background: #fff; }
+main { padding: 16px; max-width: 900px; margin: 0 auto; }
+a { text-decoration: none; color: #0b5fff; }
+a:hover { text-decoration: underline; }
+header a { color: inherit; }
+.muted { color: #666; }
+.error { color: #b00020; }
+.card { border: 1px solid #eee; border-radius: 8px; padding: 12px; margin-top: 12px; }
+.list { list-style: none; padding: 0; margin: 12px 0; }
+.list li { padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+.spinner {
+  width: 24px; height: 24px; border-radius: 50%;
+  border: 3px solid #e0e0e0; border-top-color: #0b5fff;
+  animation: spin 1s linear infinite; margin: 32px auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
