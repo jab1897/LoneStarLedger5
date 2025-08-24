@@ -8,13 +8,37 @@ export default function Home() {
 
   useEffect(() => {
     let cancelled = false;
-    api.listDistricts()
-      .then((data) => !cancelled && setRows(Array.isArray(data) ? data : (data?.items ?? [])))
+    api
+      .listDistrictsGeo()
+      .then((fc) => {
+        if (cancelled) return;
+        const features = Array.isArray(fc?.features) ? fc.features : [];
+        // Map to a simple shape for the list
+        const items = features.map((f) => {
+          const p = f?.properties || {};
+          return {
+            id: p.DISTRICT_N ?? p.id ?? p.code ?? "",
+            name: p.DISTNAME ?? p.name ?? "Unnamed District",
+          };
+        });
+        setRows(items.filter((r) => r.id));
+      })
       .catch((e) => !cancelled && setErr(e.message));
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  if (err) return <main><p className="error">Error: {err}</p></main>;
+  if (err) {
+    return (
+      <main>
+        <p className="error">Error: {err}</p>
+        <p className="muted">
+          Tip: Backend paths come from <code>/geojson/districts</code>.
+        </p>
+      </main>
+    );
+  }
   if (!rows.length) return <main><p>Loading…</p></main>;
 
   return (
@@ -23,8 +47,8 @@ export default function Home() {
       <p className="muted">Tap a district to view details.</p>
       <ul className="list">
         {rows.map((d) => (
-          <li key={d.id ?? d.DISTRICT_N}>
-            <Link to={`/district/${d.id ?? d.DISTRICT_N}`}>{d.name ?? d.DISTNAME ?? "Unnamed District"}</Link>
+          <li key={d.id}>
+            <Link to={`/district/${d.id}`}>{d.name}</Link>
           </li>
         ))}
       </ul>
