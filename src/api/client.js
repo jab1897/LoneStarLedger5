@@ -1,13 +1,8 @@
-const BASE = import.meta.env.VITE_API_URL;
-
-function assertBase() {
-  if (!BASE) {
-    throw new Error("VITE_API_URL is not set. Define it in .env and in Vercel project settings.");
-  }
-}
+// src/api/client.js
+// Hardwired to your Render backend:
+const BASE = "https://lonestarledger2-0.onrender.com";
 
 async function request(path, options = {}) {
-  assertBase();
   const res = await fetch(`${BASE}${path}`, {
     headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     ...options
@@ -20,10 +15,9 @@ async function request(path, options = {}) {
   return ct.includes("application/json") ? res.json() : res.text();
 }
 
-// Example endpoints — adjust paths to match your Render API.
+// Adjust endpoints if your API differs
 export const api = {
   listDistricts: () => request("/districts"),
   getDistrict: (id) => request(`/districts/${id}`),
   getCampus: (id) => request(`/campuses/${id}`)
 };
-
