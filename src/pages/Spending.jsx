@@ -1,54 +1,72 @@
-import React from "react";
-import DataTable from "../ui/DataTable";
-import { usd, dt } from "../lib/format";
-import { toCSV, downloadCSV } from "../lib/csv";
-// Placeholder data for now; swap with API call via getJSON('/spending?...')
-const sample = Array.from({length:50}).map((_,i)=>({
-  id: i+1,
-  date: `2024-${String((i%12)+1).padStart(2,'0')}-15`,
-  district: ["Austin ISD","Northside ISD","Sharyland ISD"][i%3],
-  vendor: ["Vendor A","Vendor B","Vendor C"][i%3],
-  category: ["Instruction","Facilities","Transportation"][i%3],
-  amount: Math.round(Math.random()*90000)+1000
-}));
-const COLUMNS = [
-  { key:"date", label:"Date", format:v=>dt(v) },
-  { key:"district", label:"District" },
-  { key:"vendor", label:"Vendor" },
-  { key:"category", label:"Category" },
-  { key:"amount", label:"Amount", align:"right", format:v=>usd.format(v) },
-];
+import React, { useEffect, useState } from "react";
+import StatCard from "../ui/StatCard";
 
-export default function Spending(){
-  const [q, setQ] = React.useState("");
-  const [rows, setRows] = React.useState(sample);
-  const filtered = React.useMemo(()=>{
-    if(!q.trim()) return rows;
-    const needle = q.toLowerCase();
-    return rows.filter(r =>
-      r.district.toLowerCase().includes(needle) ||
-      r.vendor.toLowerCase().includes(needle) ||
-      r.category.toLowerCase().includes(needle)
+export default function SpendingPage() {
+  const [error, setError] = useState(null);
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const url = import.meta.env.VITE_SPENDING_CSV;
+    if (!url) {
+      setError("MISSING_ENV");
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const text = await resp.text();
+        // TODO: parse CSV once ready
+        setRows([]); // placeholder
+      } catch (e) {
+        console.error(e);
+        setError("LOAD_FAILED");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  if (error === "MISSING_ENV") {
+    return (
+      <div className="px-4 md:px-8">
+        <h1 className="text-3xl font-extrabold mb-4">Spending</h1>
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-6 rounded-xl">
+          <p className="font-semibold">Spending data coming soon</p>
+          <p className="text-sm mt-2">
+            This feature depends on a statewide spending CSV that has not been provided yet.
+          </p>
+        </div>
+      </div>
     );
-  }, [rows, q]);
+  }
 
-  const exportCSV = () => {
-    const csv = toCSV(filtered, COLUMNS);
-    downloadCSV("spending.csv", csv);
-  };
+  if (error === "LOAD_FAILED") {
+    return (
+      <div className="px-4 md:px-8">
+        <h1 className="text-3xl font-extrabold mb-4">Spending</h1>
+        <div className="bg-red-50 border border-red-200 text-red-800 p-6 rounded-xl">
+          <p className="font-semibold">Failed to load spending data.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-4">
-      <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-        <h1 className="text-2xl font-bold">Spending</h1>
-        <div className="flex gap-2">
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Filter by district, vendor, category" className="border rounded-xl px-3 py-2 w-72"/>
-          <button onClick={exportCSV} className="rounded-xl border px-3 py-2 hover:bg-gray-50">Export CSV</button>
+    <div className="px-4 md:px-8">
+      <h1 className="text-3xl font-extrabold mb-4">Spending</h1>
+      {loading ? (
+        <p>Loading…</p>
+      ) : (
+        <div className="space-y-4">
+          {/* Placeholder content until real parsing is added */}
+          <StatCard label="Total Spending" value="—" />
+          <StatCard label="Vendors" value="—" />
         </div>
-      </header>
-      <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <DataTable columns={COLUMNS} rows={filtered} initialSort={{ key:"date", dir:"desc" }} />
-      </section>
+      )}
     </div>
   );
 }
