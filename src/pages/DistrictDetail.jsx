@@ -1,7 +1,6 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
-// import DataTable from "../ui/DataTable"; // (not used here)
 import { fetchCSV, fetchJSON, indexBy, findFeatureByProp } from "../lib/staticData";
 import { usd, num } from "../lib/format";
 import Map from "../ui/Map";
@@ -10,6 +9,7 @@ const DISTRICTS_CSV = "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON = "/data/Current_Districts_2025.geojson";
 const KEY = "DISTRICT_N";
 
+// Try split GeoJSON first; fall back to statewide and pick the feature
 async function tryLoadDistrictFeature(id) {
   const splitPath = `/data/geojson/district_${id}.geojson`;
   try { return await fetchJSON(splitPath); }
@@ -21,12 +21,40 @@ async function tryLoadDistrictFeature(id) {
   }
 }
 
-// safe number
+// --- header helpers ----------------------------------------------------------
+const norm = (s) => String(s || "")
+  .toLowerCase()
+  .replace(/[-_ ]+/g, "")         // remove separators
+  .replace(/[^a-z0-9]/g, "");     // strip punctuation
+
+// Build a resolver map from normalized header -> actual header (handles "-1"/"-2")
+function buildHeaderMap(row) {
+  const map = new Map();
+  const keys = Object.keys(row || {});
+  for (const k of keys) {
+    // strip "-<num>" suffix that parsers add for duplicates
+    const base = k.replace(/-\d+$/, "");
+    const nk = norm(base);
+    if (!map.has(nk)) map.set(nk, k);
+  }
+  return map;
+}
+
+function pick(row, hdrMap, ...labels) {
+  for (const label of labels) {
+    const key = hdrMap.get(norm(label));
+    if (key && row[key] !== undefined && row[key] !== "") return row[key];
+  }
+  return undefined;
+}
+
 const toNum = (v) => (v === null || v === undefined || v === "" ? NaN : Number(v));
 
+// ----------------------------------------------------------------------------
 export default function DistrictDetail(){
   const { id } = useParams();
   const [row, setRow] = React.useState(null);
+  const [hdr, setHdr] = React.useState(new Map());
   const [geom, setGeom] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
@@ -42,7 +70,9 @@ export default function DistrictDetail(){
 
       if (csvRes.status === "fulfilled") {
         const idx = indexBy(csvRes.value, KEY);
-        setRow(idx.get(String(id)) || null);
+        const found = idx.get(String(id)) || null;
+        setRow(found);
+        setHdr(buildHeaderMap(found || {}));
       } else {
         setError(String(csvRes.reason));
       }
@@ -53,23 +83,23 @@ export default function DistrictDetail(){
     return ()=>{ alive = false };
   }, [id]);
 
-  // Derive display name (name first, ID in gray)
-  const displayName = row?.NAME ?? row?.DISTRICT ?? row?.DISTNAME ?? `District ${id}`;
-  const county = row?.COUNTY ?? row?.county ?? "";
+  // Name first, ID in gray
+  const displayName =
+    (row && (pick(row, hdr, "NAME") || pick(row, hdr, "DISTRICT", "DISTNAME"))) ||
+    `District ${id}`;
+  const county = row ? (pick(row, hdr, "COUNTY") || "") : "";
 
-  // Pull KPI fields from your exact CSV headers
-  const totalSpendingRaw   = row?.["Total Spending"];
-  const enrollmentRaw      = row?.["Enrollment"];
-  const perStudentRaw      = row?.["Average Per-Student Spending"];  // may be missing
-  const districtDebtRaw    = row?.["Distrit Debt"];                   // (typo preserved)
-  const perPupilDebtRaw    = row?.["Per-Pupil Debt"];
-  const teacherSalaryRaw   = row?.["Average Teacher Salary"];
-  const principalSalaryRaw = row?.["Average Principal Salary"];
-  const superSalaryRaw     = row?.["Superintendent Salary"];
+  // KPIs via robust header resolution
+  let totalSpending   = toNum(pick(row, hdr, "Total Spending"));
+  const enrollment    = toNum(pick(row, hdr, "Enrollment"));
+  const perStudentCSV = toNum(pick(row, hdr, "Average Per-Student Spending"));
+  const districtDebt  = toNum(pick(row, hdr, "Distrit Debt")); // header has typo
+  const perPupilDebt  = toNum(pick(row, hdr, "Per-Pupil Debt"));
+  const teacherSalary = toNum(pick(row, hdr, "Average Teacher Salary"));
+  const principalSal  = toNum(pick(row, hdr, "Average Principal Salary"));
+  const superSalary   = toNum(pick(row, hdr, "Superintendent Salary"));
 
-  const totalSpending = toNum(totalSpendingRaw);
-  const enrollment    = toNum(enrollmentRaw);
-  const perStudentCSV = toNum(perStudentRaw);
+  // Derive per-student if column missing
   const perStudent = !Number.isNaN(perStudentCSV)
     ? perStudentCSV
     : (!Number.isNaN(totalSpending) && !Number.isNaN(enrollment) && enrollment > 0
@@ -93,18 +123,16 @@ export default function DistrictDetail(){
             <p className="text-gray-600 mt-1">{county}</p>
           </div>
 
-          {/* KPIs driven by CSV headers */}
+          {/* KPIs */}
           <div className="flex flex-wrap gap-2">
             <StatPill label="Enrollment" value={Number.isNaN(enrollment) ? "—" : num.format(enrollment)} />
             <StatPill label="Per pupil" value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
             <StatPill label="Total spend" value={Number.isNaN(totalSpending) ? "—" : usd.format(totalSpending)} />
-
-            {/* Optional: show the salary/debt trio on wide screens */}
-            <StatPill label="District debt" value={districtDebtRaw ? usd.format(toNum(districtDebtRaw)) : "—"} />
-            <StatPill label="Per‑pupil debt" value={perPupilDebtRaw ? usd.format(toNum(perPupilDebtRaw)) : "—"} />
-            <StatPill label="Teacher salary" value={teacherSalaryRaw ? usd.format(toNum(teacherSalaryRaw)) : "—"} />
-            <StatPill label="Principal salary" value={principalSalaryRaw ? usd.format(toNum(principalSalaryRaw)) : "—"} />
-            <StatPill label="Superintendent" value={superSalaryRaw ? usd.format(toNum(superSalaryRaw)) : "—"} />
+            <StatPill label="District debt" value={Number.isNaN(districtDebt) ? "—" : usd.format(districtDebt)} />
+            <StatPill label="Per‑pupil debt" value={Number.isNaN(perPupilDebt) ? "—" : usd.format(perPupilDebt)} />
+            <StatPill label="Teacher salary" value={Number.isNaN(teacherSalary) ? "—" : usd.format(teacherSalary)} />
+            <StatPill label="Principal salary" value={Number.isNaN(principalSal) ? "—" : usd.format(principalSal)} />
+            <StatPill label="Superintendent" value={Number.isNaN(superSalary) ? "—" : usd.format(superSalary)} />
           </div>
         </div>
       </header>
@@ -116,22 +144,12 @@ export default function DistrictDetail(){
           : <p className="text-gray-600">No geometry found for this district yet.</p>}
       </section>
 
+      {/* Placeholder for next phase */}
       <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <h2 className="text-xl font-bold">District attributes</h2>
-        {loading && <div>Loading…</div>}
-        {error && <div className="text-red-700">{error}</div>}
-        {!loading && !error && (
-          row ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              {Object.entries(row).map(([k,v])=>(
-                <div key={k} className="bg-gray-50 border rounded-xl px-3 py-2">
-                  <div className="text-gray-600">{k}</div>
-                  <div className="font-medium break-words">{String(v)}</div>
-                </div>
-              ))}
-            </div>
-          ) : <div>No record found in CSV for ID {id}.</div>
-        )}
+        <h2 className="text-xl font-bold">Campuses (coming soon)</h2>
+        <p className="text-gray-600 text-sm">
+          This panel will list campuses in the district, sorted by Campus Score, with search and map markers.
+        </p>
       </section>
     </div>
   );
