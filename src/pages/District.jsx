@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { loadDistrictsCSV } from "../lib/data";
 import { getSpendingForDistrict } from "../lib/spending";
+import DistrictMap from "../components/DistrictMap"; // 👈 NEW
 
 const fmtInt = (n) =>
   n === null || n === undefined || n === "" || Number.isNaN(+n)
@@ -18,13 +19,17 @@ const fmtMoney = (n) =>
         maximumFractionDigits: 0,
       }).format(Math.round(+String(n).replace(/[\$,]/g, "")));
 
+// local numeric parser for row values
+const NUM = (v) =>
+  v === null || v === undefined || v === "" ? 0 : Number(String(v).replace(/[\$,]/g, ""));
+
 export default function District() {
   const { id } = useParams(); // /district/:id
   const [row, setRow] = useState(null);
   const [fields, setFields] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // spending state
+  // spending state (kept visible per your preference)
   const [spRows, setSpRows] = useState([]);
   const [spCats, setSpCats] = useState([]);
   const [spLoading, setSpLoading] = useState(true);
@@ -97,10 +102,16 @@ export default function District() {
       const k = fields[key];
       return k ? row[k] : undefined;
     };
+
+    // 👇 compute per-student spending from this district's row
+    const totalSpending = NUM(get("TOTAL_SPENDING"));
+    const enrollment = NUM(get("ENROLLMENT"));
+    const perStudentSpending = enrollment > 0 ? Math.round(totalSpending / enrollment) : 0;
+
     return [
-      { label: "Total Spending", value: fmtMoney(get("TOTAL_SPENDING")) },
-      { label: "Enrollment", value: fmtInt(get("ENROLLMENT")) },
-      { label: "Avg Per-Student Spending", value: fmtMoney(18125) }, // fixed
+      { label: "Total Spending", value: fmtMoney(totalSpending) },
+      { label: "Enrollment", value: fmtInt(enrollment) },
+      { label: "Per-Student Spending", value: fmtMoney(perStudentSpending) }, // ← computed
       { label: "District Debt", value: fmtMoney(get("DISTRICT_DEBT")) },
       { label: "Per-Pupil Debt", value: fmtMoney(get("PER_PUPIL_DEBT")) },
       { label: "Average Teacher Salary", value: fmtMoney(get("TEACHER_SALARY")) },
@@ -112,7 +123,7 @@ export default function District() {
   const filteredSpending = useMemo(() => {
     let list = spRows;
 
-    // keyword (vendor/description)
+    // keyword (vendor/description/category)
     const needle = q.trim().toLowerCase();
     if (needle) {
       list = list.filter(
@@ -129,12 +140,8 @@ export default function District() {
     // amount range
     const min = Number(minAmt || 0);
     const max = Number(maxAmt || 0);
-    if (minAmt !== "" && !Number.isNaN(min)) {
-      list = list.filter((r) => r.amount >= min);
-    }
-    if (maxAmt !== "" && !Number.isNaN(max)) {
-      list = list.filter((r) => r.amount <= max);
-    }
+    if (minAmt !== "" && !Number.isNaN(min)) list = list.filter((r) => r.amount >= min);
+    if (maxAmt !== "" && !Number.isNaN(max)) list = list.filter((r) => r.amount <= max);
 
     // date range (inclusive)
     const from = fromDate ? new Date(fromDate) : null;
@@ -145,7 +152,6 @@ export default function District() {
         if (!d) return false;
         if (from && d < from) return false;
         if (to) {
-          // make 'to' inclusive for the whole day
           const toEnd = new Date(to);
           toEnd.setHours(23, 59, 59, 999);
           if (d > toEnd) return false;
@@ -220,7 +226,14 @@ export default function District() {
         </div>
       </section>
 
-      {/* Spending Table */}
+      {/* 🗺️ District Map */}
+      <section className="bg-white rounded-2xl border p-6 md:p-8">
+        <h2 className="text-xl font-semibold mb-4">Map</h2>
+        <DistrictMap districtId={code} />
+        {/* Future: when campus GeoJSON/CSV land, we will add campus points here */}
+      </section>
+
+      {/* Spending Table (kept visible as a reminder) */}
       <section className="bg-white rounded-2xl border p-6 md:p-8">
         <div className="flex items-center justify-between gap-4 mb-4">
           <h2 className="text-xl font-semibold">Spending</h2>
@@ -343,7 +356,7 @@ export default function District() {
       <section className="bg-white rounded-2xl border p-6">
         <h3 className="text-lg font-semibold">Campuses</h3>
         <p className="text-gray-600 mt-1">
-          Coming next: campus list and metrics; we’ll mirror the District UX at campus level.
+          Coming next: campus points overlay, campus count, names, and search.
         </p>
       </section>
     </div>
