@@ -4,6 +4,7 @@ import Layout from "./shell/Layout";
 import Home from "./pages/Home";
 import Districts from "./pages/Districts";
 import District from "./pages/District";      // ✅ new import
+import Campus from "./pages/Campus";  // ✅ new
 import CampusDetail from "./pages/CampusDetail";
 import Campuses from "./pages/Campuses";
 import NotFound from "./pages/NotFound";
@@ -23,6 +24,7 @@ export default function App() {
               <Route path="/districts" element={<Districts />} />
               {/* 👇 swapped DistrictDetail → District */}
               <Route path="/district/:id" element={<District />} />
+              <Route path="/campus/:id" element={<Campus />} />
               <Route path="/campus/:id" element={<CampusDetail />} />
               <Route path="/spending" element={<Spending />} />
               <Route path="/about" element={<About />} />
