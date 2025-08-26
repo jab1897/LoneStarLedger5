@@ -1,85 +1,58 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
-import { loadDistrictsCSV } from "../lib/data";
+// src/components/TexasMap.jsx
+import React, { useEffect, useRef, useState, useMemo } from "react";
+import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
+import L from "leaflet";
+
+function FitToLayer({ layerRef }) {
+  const map = useMap();
+  useEffect(() => {
+    const layer = layerRef.current;
+    try {
+      if (layer && layer.getBounds && layer.getBounds().isValid()) {
+        map.fitBounds(layer.getBounds(), { padding: [20, 20] });
+      }
+    } catch {}
+  }, [layerRef, map]);
+  return null;
+}
 
 export default function TexasMap() {
-  const [geo, setGeo] = useState(null);
-  const [byId, setById] = useState({});
+  const [fc, setFc] = useState(null);
+  const gjRef = useRef(null);
+  const url = import.meta.env.VITE_TEXAS_GEOJSON
+           || import.meta.env.VITE_DISTRICTS_GEOJSON
+           || "/data/Current_Districts_2025.geojson";
 
   useEffect(() => {
-    const url = import.meta.env.VITE_TEXAS_GEOJSON;
-    fetch(url, { cache: "force-cache" })
-      .then((r) => r.json())
-      .then(setGeo)
-      .catch((e) => {
-        console.error("Failed to load GeoJSON", e);
-        setGeo(null);
-      });
+    (async () => {
+      try {
+        const res = await fetch(url, { cache: "force-cache" });
+        if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+        const data = await res.json();
+        setFc(data);
+      } catch (e) {
+        console.error("Failed to load statewide GeoJSON:", e);
+        setFc(null);
+      }
+    })();
+  }, [url]);
 
-    loadDistrictsCSV().then(({ byId }) => setById(byId)).catch(console.error);
-  }, []);
-
-  const style = useMemo(
-    () => ({ weight: 1, color: "#444", fillOpacity: 0.18 }),
-    []
-  );
+  const polyStyle = useMemo(() => ({ weight: 1, color: "#1f3a8a", fillOpacity: 0.15 }), []);
 
   return (
-    <section className="space-y-3">
-      <h2 className="text-xl font-bold">Texas districts map</h2>
-      <div className="h-[520px] w-full rounded-2xl overflow-hidden border bg-white">
-        <MapContainer
-          center={[31.0, -99.0]}
-          zoom={6}
-          minZoom={5}
-          maxZoom={12}
-          scrollWheelZoom={false}
-          className="h-full w-full"
-        >
-          <TileLayer
-            attribution="&copy; OpenStreetMap contributors"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          {geo && (
-            <GeoJSON
-              data={geo}
-              style={() => style}
-              onEachFeature={(feature, layer) => {
-                const props = feature?.properties || {};
-                const code = String(props.DISTRICT_N ?? props.DISTRICT_ID ?? "");
-                const name = String(
-                  props.NAME ?? props.DISTRICT ?? props.DISTNAME ?? "District"
-                );
-
-                const row = code && byId[code] ? byId[code] : null;
-                const enrollment = row?.ENROLLMENT;
-                const campuses = row?.CAMPUSES;
-                const ada = row?.ADA;
-
-                const lines = [
-                  `<strong>${name}${code ? ` (${code})` : ""}</strong>`,
-                  enrollment
-                    ? `Enrollment: ${new Intl.NumberFormat("en-US").format(+enrollment)}`
-                    : null,
-                  campuses
-                    ? `Campuses: ${new Intl.NumberFormat("en-US").format(+campuses)}`
-                    : null,
-                  ada
-                    ? `ADA: ${new Intl.NumberFormat("en-US").format(+ada)}`
-                    : null,
-                ].filter(Boolean);
-
-                layer.bindTooltip(lines.join("<br/>"), { sticky: true });
-                layer.on("click", () => {
-                  if (code) window.location.href = `/district/${encodeURIComponent(code)}`;
-                });
-                layer.on("mouseover", () => layer.setStyle({ weight: 2, fillOpacity: 0.28 }));
-                layer.on("mouseout", () => layer.setStyle({ weight: 1, fillOpacity: 0.18 }));
-              }}
-            />
-          )}
-        </MapContainer>
-      </div>
-    </section>
+    <div className="h-[420px] w-full rounded-2xl overflow-hidden border bg-white">
+      <MapContainer center={[31, -99]} zoom={6} className="h-full w-full" scrollWheelZoom={false}>
+        <TileLayer
+          attribution="&copy; OpenStreetMap contributors"
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {fc ? (
+          <>
+            <GeoJSON ref={gjRef} data={fc} style={() => polyStyle} />
+            <FitToLayer layerRef={gjRef} />
+          </>
+        ) : null}
+      </MapContainer>
+    </div>
   );
 }
