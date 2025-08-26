@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
 import { fetchCSV, fetchJSON, indexBy, findFeatureByProp } from "../lib/staticData";
 import { usd, num } from "../lib/format";
-import Map from "../ui/Map";
+import LeafMap from "../ui/Map";
 
 const DISTRICTS_CSV = "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON = "/data/Current_Districts_2025.geojson";
@@ -29,7 +29,7 @@ const norm = (s) => String(s || "")
 
 // Build a resolver map from normalized header -> actual header (handles "-1"/"-2")
 function buildHeaderMap(row) {
-  const map = new Map();
+  const map = new globalThis.Map();
   const keys = Object.keys(row || {});
   for (const k of keys) {
     // strip "-<num>" suffix that parsers add for duplicates
@@ -54,7 +54,7 @@ const toNum = (v) => (v === null || v === undefined || v === "" ? NaN : Number(v
 export default function DistrictDetail(){
   const { id } = useParams();
   const [row, setRow] = React.useState(null);
-  const [hdr, setHdr] = React.useState(new Map());
+  const [hdr, setHdr] = React.useState(new globalThis.Map());
   const [geom, setGeom] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
@@ -140,7 +140,7 @@ export default function DistrictDetail(){
       <section className="bg-white border rounded-2xl p-6 space-y-3">
         <h2 className="text-xl font-bold">Geometry</h2>
         {geom
-          ? <Map geom={geom} height={420} />
+          ? <LeafMap geom={geom} height={420} />
           : <p className="text-gray-600">No geometry found for this district yet.</p>}
       </section>
 
