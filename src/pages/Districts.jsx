@@ -147,8 +147,9 @@ export default function DistrictsPage() {
   const handleEnter = () => {
     const typed = query.trim();
     if (!isIdLike(typed)) return;
-    const hit = rows.find((r) => String(r.DISTRICT_N ?? "") === typed);
-    if (hit) nav(`/district/${encodeURIComponent(typed)}`);
+    const canon = (s) => String(s ?? "").replace(/^0+/, "");
+    const hit = rows.find((r) => canon(r.DISTRICT_N) === canon(typed));
+    if (hit) nav(`/district/${encodeURIComponent(canon(typed))}`);
   };
 
   const clearAll = () => {

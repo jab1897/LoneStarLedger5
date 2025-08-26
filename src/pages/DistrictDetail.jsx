@@ -5,8 +5,8 @@ import { fetchCSV, fetchJSON, indexBy, findFeatureByProp } from "../lib/staticDa
 import { usd, num } from "../lib/format";
 import Map from "../ui/Map";
 
-const DISTRICTS_CSV = "/data/Current_Districts_2025.csv";
-const DISTRICTS_GEOJSON = "/data/Current_Districts_2025.geojson";
+const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
+const DISTRICTS_GEOJSON = import.meta.env.VITE_DISTRICTS_GEOJSON || import.meta.env.VITE_TEXAS_GEOJSON || "/data/Current_Districts_2025.geojson";
 const KEY = "DISTRICT_N";
 
 // Try split GeoJSON first; fall back to statewide and pick the feature
@@ -48,7 +48,7 @@ function pick(row, hdrMap, ...labels) {
   return undefined;
 }
 
-const toNum = (v) => (v === null || v === undefined || v === "" ? NaN : Number(v));
+const toNum = (v) => { if (v === null || v === undefined || v === "") return NaN; const s = String(v).replace(/[\$,]/g, ""); const n = Number(s); return Number.isNaN(n) ? NaN : n; };
 
 // ----------------------------------------------------------------------------
 export default function DistrictDetail(){

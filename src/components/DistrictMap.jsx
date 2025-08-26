@@ -3,6 +3,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
 import { getCampusFeaturesForDistrict } from "../lib/campuses";
 
+const canonId = (v) => String(v ?? "").replace(/^0+/, "");
+
 function FitToLayer({ layerRef }) {
   const map = useMap();
   useEffect(() => {
@@ -21,7 +23,7 @@ export default function DistrictMap({ districtId }) {
   const gjRef = useRef(null);
 
   useEffect(() => {
-    const url = import.meta.env.VITE_TEXAS_GEOJSON;
+    const url = import.meta.env.VITE_TEXAS_GEOJSON || import.meta.env.VITE_DISTRICTS_GEOJSON;
     fetch(url, { cache: "force-cache" })
       .then((r) => r.json())
       .then((fc) => setGeo(fc))
@@ -31,10 +33,11 @@ export default function DistrictMap({ districtId }) {
   useEffect(() => {
     if (!geo || !districtId) return;
     const id = String(districtId);
+    const idCanon = canonId(id);
     const feats = (geo.features || []).filter((f) => {
       const p = f.properties || {};
       const a = String(p.DISTRICT_N ?? p.DISTRICT_ID ?? "");
-      return a === id;
+      return a === id || canonId(a) === idCanon;
     });
     setFeature(feats.length ? { type: "FeatureCollection", features: [feats[0]] } : null);
   }, [geo, districtId]);
