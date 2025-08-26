@@ -1,7 +1,10 @@
 // src/components/TexasMap.jsx
 import React, { useEffect, useRef, useState, useMemo } from "react";
 import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
+import "leaflet/dist/leaflet.css";
 import L from "leaflet";
+
+const canonId = (v) => String(v ?? "").replace(/^0+/, "");
 
 function FitToLayer({ layerRef }) {
   const map = useMap();
@@ -37,7 +40,7 @@ export default function TexasMap() {
     })();
   }, [url]);
 
-  const polyStyle = useMemo(() => ({ weight: 1, color: "#1f3a8a", fillOpacity: 0.15 }), []);
+  const baseStyle = useMemo(() => ({ weight: 1, color: "#1f3a8a", fillOpacity: 0.15 }), []);
 
   return (
     <div className="h-[420px] w-full rounded-2xl overflow-hidden border bg-white">
@@ -48,7 +51,21 @@ export default function TexasMap() {
         />
         {fc ? (
           <>
-            <GeoJSON ref={gjRef} data={fc} style={() => polyStyle} />
+            <GeoJSON
+              ref={gjRef}
+              data={fc}
+              style={() => baseStyle}
+              onEachFeature={(f, layer) => {
+                const p = f.properties || {};
+                const rawId = String(p.DISTRICT_N ?? p.DISTRICT_ID ?? "");
+                const id = canonId(rawId);
+                const name = String(p.NAME ?? p.DISTRICT ?? p.DISTNAME ?? "District");
+                layer.bindTooltip(`<strong>${name}${rawId ? ` (${rawId})` : ""}</strong>`, { sticky: true });
+                layer.on("mouseover", () => layer.setStyle({ weight: 2, fillOpacity: 0.25 }));
+                layer.on("mouseout",  () => layer.setStyle({ weight: 1, fillOpacity: 0.15 }));
+                layer.on("click",     () => { if (id) window.location.href = `/district/${encodeURIComponent(id)}`; });
+              }}
+            />
             <FitToLayer layerRef={gjRef} />
           </>
         ) : null}
