@@ -1,202 +1,144 @@
 // src/lib/campuses.js
-import { fetchCSV, fetchJSON } from "./staticData";
+import { fetchCSV } from "./staticData";
 
-// Data locations (env first, then public/ fallback)
+// ENV (falls back to public/data)
 const CAMPUSES_CSV =
   import.meta.env.VITE_CAMPUSES_CSV || "/data/Schools_2024_to_2025.csv";
-const CAMPUSES_GEOJSON =
-  import.meta.env.VITE_CAMPUSES_GEOJSON || "/data/Schools_2024_to_2025.geojson";
 
-const _cache = { rows: null, fields: null, byCampusId: null };
+// ────────────────────────────────────────────────────────────────────────────
+// utilities
+const norm = (s) => String(s || "").toLowerCase().replace(/[-_ ]+/g, "").replace(/[^a-z0-9]/g, "");
+const canon = (v) => String(v ?? "").replace(/['"]/g, "").replace(/\D/g, "").replace(/^0+/, "");
 
-// ---------- helpers ----------
-const norm = (s) =>
-  String(s || "").toLowerCase().replace(/[-_ ]+/g, "").replace(/[^a-z0-9]/g, "");
-
-// Normalize any ID that might contain quotes/spaces/left‑padded zeros.
-// e.g. "'015901" -> "15901", 015901 -> "15901"
-export const canonId = (v) =>
-  String(v ?? "").replace(/['"]/g, "").replace(/\D/g, "").replace(/^0+/, "");
-
+/** Pick best header using exact aliases first, then fuzzy regex. */
 function bestHeader(row0, aliases = [], fuzzy = []) {
   const keys = Object.keys(row0 || {});
-  const nm = new Map(keys.map((k) => [norm(k), k]));
+  const byNorm = new globalThis.Map(keys.map((k) => [norm(k), k]));
   for (const a of aliases) {
-    const k = nm.get(norm(a));
+    const k = byNorm.get(norm(a));
     if (k) return k;
   }
-  for (const k of keys) {
-    const raw = k.toLowerCase();
-    if (fuzzy.some((re) => re.test(raw))) return k;
+  if (fuzzy?.length) {
+    for (const k of keys) {
+      const raw = k.toLowerCase();
+      if (fuzzy.some((re) => re.test(raw))) return k;
+    }
   }
   return null;
 }
 
-// One pass to detect the relevant columns in the CSV
 function detectFields(row0) {
-  return {
-    // district id on each campus row
-    DISTRICT_ID: bestHeader(
-      row0,
-      [
-        "USER_District_Number",
-        "District Number",
-        "District_ID",
-        "DISTRICT_N",
-        "DISTRICT_ID",
-        "LEAID",
-        "LEA_ID",
-        "LEA CODE",
-        "LEA",
-      ],
-      [/district.*(number|id|code)/i, /\blea\b/i, /lea.*id/i, /lea.*code/i]
-    ),
-    // campus id / code
-    CAMPUS_ID: bestHeader(
-      row0,
-      [
-        "USER_School_Number",
-        "USER_Campus_Number",
-        "Campus ID",
-        "CAMPUS_ID",
-        "CAMPUS_N",
-        "School Number",
-        "CAMPUS",
-        "SCHOOL_ID",
-        "SCHOOL_NUMBER",
-      ],
-      [/campus.*(id|number)/i, /school.*(id|number)/i]
-    ),
-    // campus name
-    CAMPUS_NAME: bestHeader(
-      row0,
-      [
-        "USER_School_Name",
-        "Campus Name",
-        "CAMPUS_NAME",
-        "NAME",
-        "School Name",
-        "SCHOOL_NAME",
-      ],
-      [/campus.*name/i, /school.*name/i]
-    ),
-    // score / rating (used to sort)
-    CAMPUS_SCORE: bestHeader(
-      row0,
-      ["Campus Score", "CAMPUS_SCORE", "CampusScore", "SCORE", "RATING", "GRADE"],
-      [/score/i, /rating/i, /grade/i]
-    ),
+  // District, Campus, Names, Scores + useful KPIs
+  const DISTRICT_ID = bestHeader(
+    row0,
+    [
+      "USER_District_Number",
+      "USER District Number",
+      "DISTRICT_N",
+      "DISTRICT_ID",
+      "LEAID",
+      "LEA_ID",
+      "LEA CODE",
+      "LEA",
+    ],
+    [/district.*(number|id|code)/i, /\blea\b/i, /lea.*(id|code)/i]
+  );
 
-    // Optional KPIs used on /campus/:id
-    READING_OGR: bestHeader(
-      row0,
-      ["Reading OGL", "READING_OGR", "Reading On Grade-Level"],
-      [/reading.*(og|on.?grade)/i]
-    ),
-    MATH_OGR: bestHeader(
-      row0,
-      ["Math OGL", "MATH_OGR", "Math On Grade-Level"],
-      [/math.*(og|on.?grade)/i]
-    ),
-    TEACHER_COUNT: bestHeader(
-      row0,
-      ["Teacher Count", "TEACHER_COUNT"],
-      [/teacher.*count/i]
-    ),
-    ADMIN_COUNT: bestHeader(
-      row0,
-      ["Admin Count", "ADMIN_COUNT"],
-      [/admin.*count/i]
-    ),
-    AVG_ADMIN_SAL: bestHeader(
-      row0,
-      ["Average Admin Salary", "AVG_ADMIN_SAL"],
-      [/admin.*salary/i]
-    ),
-    AVG_TEACH_SAL: bestHeader(
-      row0,
-      ["Average Teacher Salary", "AVG_TEACH_SAL"],
-      [/teacher.*salary/i]
-    ),
-    CAMPUS_GRADE: bestHeader(
-      row0,
-      ["Campus Grade", "CAMPUS_GRADE", "GRADE"],
-      [/campus.*grade/i]
-    ),
+  const CAMPUS_ID = bestHeader(
+    row0,
+    [
+      "USER_School_Number",
+      "USER_Campus_Number",
+      "School Number",
+      "Campus Number",
+      "CAMPUS_ID",
+      "CAMPUS_N",
+      "SCHOOL_ID",
+      "SCHOOL_NUMBER",
+    ],
+    [/campus.*(id|number)/i, /school.*(id|number)/i]
+  );
+
+  const CAMPUS_NAME = bestHeader(
+    row0,
+    ["USER_School_Name", "CAMPUS_NAME", "Campus Name", "School Name", "NAME"],
+    [/campus.*name/i, /school.*name/i]
+  );
+
+  const CAMPUS_SCORE = bestHeader(
+    row0,
+    ["Campus Score", "CAMPUS_SCORE", "CampusScore", "SCORE", "RATING", "OVERALL SCORE"],
+    [/score/i, /rating/i, /grade.*score/i]
+  );
+
+  const READING_OGR = bestHeader(row0, ["Reading OGL", "READING_OGR", "Reading On Grade Level"], [/read.*on.*grade/i]);
+  const MATH_OGR = bestHeader(row0, ["Math OGL", "MATH_OGR", "Math On Grade Level"], [/math.*on.*grade/i]);
+
+  const TEACHER_COUNT = bestHeader(row0, ["Teacher Count", "TEACHER_COUNT", "Teachers"], [/teacher.*count/i]);
+  const ADMIN_COUNT = bestHeader(row0, ["Admin Count", "ADMIN_COUNT", "Administrators"], [/admin.*count/i]);
+
+  const AVG_ADMIN_SAL = bestHeader(row0, ["Average Admin Salary", "AVG_ADMIN_SAL"], [/admin.*salary/i]);
+  const AVG_TEACH_SAL = bestHeader(row0, ["Average Teacher Salary", "AVG_TEACH_SAL"], [/teacher.*salary/i]);
+
+  const CAMPUS_GRADE = bestHeader(row0, ["Campus Grade", "CAMPUS_GRADE", "GRADE"], [/grade$/i]);
+
+  return {
+    DISTRICT_ID,
+    CAMPUS_ID,
+    CAMPUS_NAME,
+    CAMPUS_SCORE,
+    READING_OGR,
+    MATH_OGR,
+    TEACHER_COUNT,
+    ADMIN_COUNT,
+    AVG_ADMIN_SAL,
+    AVG_TEACH_SAL,
+    CAMPUS_GRADE,
   };
 }
 
-async function loadCSV() {
-  if (_cache.rows) return _cache;
-  const rows = await fetchCSV(CAMPUSES_CSV);
+const _cache = { rows: null, fields: null };
+
+/** Load entire campuses CSV once and detect fields */
+export async function loadCampuses(csvUrl) {
+  if (_cache.rows && _cache.fields) return _cache;
+  const url = csvUrl || CAMPUSES_CSV;
+  const rows = await fetchCSV(url);
   const row0 = rows[0] || {};
   const fields = detectFields(row0);
-
-  // Build by-id index for quick lookup
-  const idKey = fields.CAMPUS_ID;
-  const byCampusId = new Map();
-  if (idKey) {
-    for (const r of rows) {
-      const k = r?.[idKey];
-      if (k !== undefined && k !== null && k !== "") {
-        byCampusId.set(String(k), r);
-        byCampusId.set(canonId(k), r); // also index by canonical numeric form
-      }
-    }
-  }
-
   _cache.rows = rows;
   _cache.fields = fields;
-  _cache.byCampusId = byCampusId;
-  return _cache;
-}
-
-// ---------- exported API ----------
-
-// Get every campus row (unfiltered) + detected field names
-export async function getAllCampuses() {
-  const { rows, fields } = await loadCSV();
   return { rows, fields };
 }
 
-// Campuses for a given district (id may include left zeros or quotes)
-export async function getCampusesForDistrict(districtId) {
-  const { rows, fields } = await loadCSV();
-  const did = canonId(districtId);
-  const k = fields.DISTRICT_ID;
-  const filtered = k ? rows.filter((r) => canonId(r?.[k]) === did) : [];
-  return { rows: filtered, fields };
-}
+/** Get all campuses for a given district (ID canonicalized) */
+export async function getCampusesForDistrict(districtId, csvUrl) {
+  const { rows, fields } = await loadCampuses(csvUrl);
+  const kDist = fields.DISTRICT_ID;
+  if (!kDist) return { rows: [], fields };
+  const want = canon(districtId);
+  let list = rows.filter((r) => r?.[kDist] != null && canon(r[kDist]) === want);
 
-// Find a single campus by campus id
-export async function getCampusById(campusId) {
-  const { fields, byCampusId } = await loadCSV();
-  const id = String(campusId);
-  const cand =
-    byCampusId.get(id) ||
-    byCampusId.get(canonId(id)) ||
-    null;
-  return { row: cand, fields };
-}
-
-// Return a FeatureCollection of campus points for a district (for the map overlay)
-export async function getCampusFeaturesForDistrict(districtId) {
-  try {
-    const fc = await fetchJSON(CAMPUSES_GEOJSON);
-    const feats = (fc?.features || []);
-    if (!feats.length) return { type: "FeatureCollection", features: [] };
-    const props0 = feats[0]?.properties || {};
-    const distKey =
-      bestHeader(
-        props0,
-        ["USER_District_Number", "DISTRICT_N", "DISTRICT_ID", "LEAID", "LEA_ID", "LEA CODE", "LEA"],
-        [/district.*(number|id|code)/i, /\blea\b/i, /lea.*id/i, /lea.*code/i]
-      ) || "DISTRICT_N";
-
-    const want = canonId(districtId);
-    const out = feats.filter((f) => canonId(f?.properties?.[distKey]) === want);
-    return { type: "FeatureCollection", features: out };
-  } catch {
-    return { type: "FeatureCollection", features: [] };
+  const kScore = fields.CAMPUS_SCORE;
+  if (kScore) {
+    list = list.sort((a, b) => {
+      const A = Number(String(a[kScore]).replace(/[\$,]/g, ""));
+      const B = Number(String(b[kScore]).replace(/[\$,]/g, ""));
+      if (Number.isNaN(A) && Number.isNaN(B)) return 0;
+      if (Number.isNaN(A)) return 1;
+      if (Number.isNaN(B)) return -1;
+      return B - A;
+    });
   }
+  return { rows: list, fields };
+}
+
+/** Lookup a single campus by campus id */
+export async function getCampusById(campusId, csvUrl) {
+  const { rows, fields } = await loadCampuses(csvUrl);
+  const kId = fields.CAMPUS_ID;
+  if (!kId) return { row: null, fields };
+  const want = canon(campusId);
+  const row = rows.find((r) => r?.[kId] != null && canon(r[kId]) === want) || null;
+  return { row, fields };
 }
