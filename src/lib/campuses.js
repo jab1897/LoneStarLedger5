@@ -130,6 +130,11 @@ async function loadCampusesCSV() {
       ["Campus Score", "CAMPUS_SCORE", "CampusScore", "SCORE", "RATING", "GRADE"],
       [/score/i, /rating/i, /grade/i]
     ),
+    CAMPUS_GRADE: bestHeader(
+      row0,
+      ["Campus Grade","Overall Grade","GRADE","RATING","Letter Grade","LETTER_GRADE"],
+      [/(^|\s)(overall\s*)?grade/i, /rating/i]
+    ),
     READING_OGR: bestHeader(
       row0,
       ["Reading OGL", "Reading On Grade-Level", "READING_OGL", "READING OGL"],

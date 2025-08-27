@@ -53,6 +53,36 @@ const toNumSafe = (v) => {
   return Number.isNaN(n) ? NaN : n;
 };
 
+// --- added: helpers for grade + percent formatting ---
+const gradeFromScore = (s) => {
+  const n = Number(String(s ?? "").replace(/[^0-9.\-]/g, ""));
+  if (Number.isNaN(n)) return null;
+  if (n >= 90) return "A";
+  if (n >= 80) return "B";
+  if (n >= 70) return "C";
+  if (n >= 60) return "D";
+  return "F";
+};
+const gradeColorClass = (g) => {
+  switch (String(g || "").toUpperCase()) {
+    case "A": return "bg-green-800";
+    case "B": return "bg-emerald-800";
+    case "C": return "bg-amber-700";
+    case "D": return "bg-orange-700";
+    case "F": return "bg-red-800";
+    default: return "bg-gray-700";
+  }
+};
+const toPct = (v, digits = 1) => {
+  if (v == null || v === "") return "—";
+  const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
+  if (Number.isNaN(n)) return "—";
+  const clamped = Math.max(0, Math.min(1, n));
+  return `${(clamped * 100).toFixed(digits)}%`;
+};
+// --- end helpers ---
+
+
 export default function DistrictDetail() {
   const { id } = useParams();
   const [row, setRow] = React.useState(null);
@@ -121,6 +151,12 @@ export default function DistrictDetail() {
     `District ${id}`;
   const county = row ? pick(row, hdr, "COUNTY") || "" : "";
 
+  // District TEA score and grade
+  const _ds = toNumSafe(pick(row, hdr, "Overall Score", "District Score", "SCORE", "Overall Rating", "RATING SCORE"));
+  const districtScore = Number.isNaN(_ds) ? NaN : Math.round(_ds);
+  const _dg = pick(row, hdr, "Overall Grade", "District Grade", "GRADE", "RATING");
+  const districtGrade = _dg || (!Number.isNaN(_ds) ? gradeFromScore(_ds) : null);
+
   // KPIs from CSV row
   const k = (label, ...alts) => toNumSafe(pick(row, hdr, label, ...alts));
   let totalSpending = k("Total Spending", "TOTAL_SPENDING");
@@ -181,6 +217,20 @@ export default function DistrictDetail() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
+            {districtGrade ? (
+              <div className="mt-2">
+                <span
+                  data-testid="district-grade"
+                  className={["inline-flex items-center gap-4 rounded-2xl px-5 py-2 text-3xl font-extrabold leading-none text-white shadow ring-1 ring-black/10", gradeColorClass(districtGrade)].join(" ")}
+                  title={`TEA rating ${districtGrade}${Number.isNaN(districtScore) ? "" : ` with score ${districtScore}`}`}
+                >
+                  <span className="tracking-tight">{districtGrade}</span>
+                  <span className="opacity-90">•</span>
+                  <span className="tracking-tight">{Number.isNaN(districtScore) ? "—" : num.format(districtScore)}</span>
+                </span>
+              </div>
+            ) : null}
+
             <p className="text-gray-600 mt-1">{county}</p>
           </div>
 
@@ -243,19 +293,19 @@ export default function DistrictDetail() {
                 campusesSorted.map((c, i) => {
                   const f = campFields;
                   const r = c.raw;
-                  const grade = f.CAMPUS_GRADE ? r[f.CAMPUS_GRADE] : "—";
+                  const grade = (f.CAMPUS_GRADE && r[f.CAMPUS_GRADE]) ? r[f.CAMPUS_GRADE] : (!Number.isNaN(c.score) ? gradeFromScore(c.score) : "—");
                   const read = f.READING_OGR ? r[f.READING_OGR] : "—";
                   const math = f.MATH_OGR ? r[f.MATH_OGR] : "—";
                   const tcnt = f.TEACHER_COUNT ? r[f.TEACHER_COUNT] : "—";
                   const acnt = f.ADMIN_COUNT ? r[f.ADMIN_COUNT] : "—";
                   return (
                     <tr key={`${c.id}-${i}`} className="border-b last:border-0">
-                      <td className="py-2 pr-3 font-medium">{c.name}</td>
+                      <td className="py-2 pr-3 font-medium"><Link className="text-indigo-700 hover:underline" to={`/campus/${encodeURIComponent(c.id)}`}>{c.name}</Link></td>
                       <td className="py-2 pr-3 text-gray-600">{c.id}</td>
                       <td className="py-2 pr-3">{Number.isNaN(c.score) ? "—" : num.format(c.score)}</td>
                       <td className="py-2 pr-3">{grade ?? "—"}</td>
-                      <td className="py-2 pr-3">{read ?? "—"}</td>
-                      <td className="py-2 pr-3">{math ?? "—"}</td>
+                      <td className="py-2 pr-3">{toPct(read)}</td>
+                      <td className="py-2 pr-3">{toPct(math)}</td>
                       <td className="py-2 pr-3 text-right">{tcnt ?? "—"}</td>
                       <td className="py-2 pr-3 text-right">{acnt ?? "—"}</td>
                     </tr>

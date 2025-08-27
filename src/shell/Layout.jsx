@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 export default function Layout({ children }) {
   return (
@@ -48,9 +48,20 @@ function GlobalSearch() {
   const [q, setQ] = React.useState("");
   const location = useLocation();
 
+  const navigate = useNavigate();
   const onSubmit = (e) => {
     e.preventDefault();
-    window.location.assign(`/search?q=${encodeURIComponent(q)}`);
+    const raw = (q || "").trim();
+    const digits = raw.replace(/[\'\"]/g, "").replace(/\D/g, "").replace(/^0+/, "");
+    if (digits.length >= 8) {
+      navigate(`/campus/${digits}`);
+      return;
+    }
+    if (digits.length == 6) {
+      navigate(`/district/${digits}`);
+      return;
+    }
+    navigate(`/districts?q=${encodeURIComponent(raw)}`);
   };
 
   React.useEffect(()=>{
