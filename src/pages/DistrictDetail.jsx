@@ -151,7 +151,7 @@ export default function DistrictDetail() {
   const county = row ? (pick(row, hdr, "COUNTY") || "") : "";
 
   // KPIs from the CSV row; tolerant parsing for $, commas
-  const k = (label, *alts) => toNumSafe(pick(row, hdr, label, ...alts));
+  const k = (label, ...alts) => toNumSafe(pick(row, hdr, label, ...alts));
   let totalSpending   = k("Total Spending","TOTAL_SPENDING");
   const enrollment    = k("Enrollment","ENROLLMENT","TOTAL_ENROLLMENT","STUDENTS");
   const perStudentCSV = k("Average Per-Student Spending","Per-Pupil Spending","Per Pupil Spending");
