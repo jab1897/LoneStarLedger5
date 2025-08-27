@@ -112,7 +112,8 @@ export default function DistrictDetail() {
         // --- Campuses CSV (robust) ---
         try {
           const campusRows = await fetchCSV(CAMPUSES_CSV);
-          const row0 = campusRows[0] || {};
+          // Use the first non-empty row (some CSVs yield an empty first object)
+          const row0 = campusRows.find(r => r && Object.keys(r).length) || {};
           // exact aliases + fuzzy patterns
           const kDist  = bestHeader(row0,
              ["USER_District_Number","USER District Number","DISTRICT_N","DISTRICT_ID","LEAID","LEA_ID","LEA CODE","LEA"],
