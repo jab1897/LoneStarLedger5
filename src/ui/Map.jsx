@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
+import L from "leaflet";
 
-function FitToGeom({ geom }) {
+function FitToGeom({ geom } = {}) {
   const map = useMap();
   useEffect(() => {
     if (!geom) return;
     try {
-      const layer = new GeoJSON(geom);
+      const layer = L.geoJSON(geom);
       const b = layer.getBounds();
       if (b && b.isValid()) map.fitBounds(b, { padding: [20,20] });
     } catch {}
@@ -15,7 +16,7 @@ function FitToGeom({ geom }) {
   return null;
 }
 
-export default function Map({ geom, height = 420 }) {
+export default function Map({ geom, height = 420 } = {}) {
   const style = useMemo(()=>({
     weight: 2,
     color: "#1d4ed8",
