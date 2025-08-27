@@ -3,9 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
 import { fetchCSV, fetchJSON, findFeatureByProp } from "../lib/staticData";
 import { usd, num } from "../lib/format";
-// avoid shadowing the global Map class
 import LeafMap from "../ui/Map";
-// use your robust detector & cache
 import { loadDistrictsCSV } from "../lib/data";
 
 const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
@@ -54,6 +52,23 @@ const toNumSafe = (v) => {
   return Number.isNaN(n) ? NaN : n;
 };
 
+// Find the best header by aliases + fuzzy regex fallback
+function bestHeader(row0, aliases = [], fuzzy = []) {
+  const keys = Object.keys(row0 || {});
+  const nm = new Map(keys.map(k => [norm(k), k]));
+  for (const a of aliases) {
+    const k = nm.get(norm(a));
+    if (k) return k;
+  }
+  if (fuzzy && fuzzy.length) {
+    for (const k of keys) {
+      const raw = k.toLowerCase();
+      if (fuzzy.some(re => re.test(raw))) return k;
+    }
+  }
+  return null;
+}
+
 export default function DistrictDetail() {
   const { id } = useParams();
   const [row, setRow] = React.useState(null);
@@ -70,21 +85,16 @@ export default function DistrictDetail() {
 
     (async () => {
       try {
-        // --- District CSV (use your detector & cache) ---
+        // --- District CSV ---
         const { rows, fields: F } = await loadDistrictsCSV(DISTRICTS_CSV);
-
-        // locate row by detected ID + common fallbacks, using canonical comparison
+        const allHdr = buildHeaderMap(rows[0] || {});
         const idKeys = [
           F?.ID,
-          "DISTRICT_N", "DISTRICT_C", "DISTRICT_ID", "SDLEA", "DISTRICTCODE", "ID"
+          "DISTRICT_N","DISTRICT_C","DISTRICT_ID","SDLEA","DISTRICTCODE","ID"
         ].filter(Boolean);
-
-        const allHdr = buildHeaderMap(rows[0] || {});
-        const realKeys = idKeys
-          .map(lbl => allHdr.get(norm(lbl)) || lbl)
-          .filter(Boolean);
-
+        const realKeys = idKeys.map(lbl => allHdr.get(norm(lbl)) || lbl).filter(Boolean);
         const want = canonId(id);
+
         let found = null;
         for (const k of realKeys) {
           found = rows.find(r => r?.[k] != null && canonId(r[k]) === want);
@@ -93,43 +103,61 @@ export default function DistrictDetail() {
         setRow(found || null);
         setHdr(buildHeaderMap(found || rows[0] || {}));
 
-        // --- GeoJSON for map ---
+        // --- GeoJSON ---
         try {
           const g = await tryLoadDistrictFeature(id);
           if (alive) setGeom(g);
-        } catch { /* noop */ }
+        } catch {}
 
-        // --- Campuses CSV (join & sort) ---
+        // --- Campuses CSV (robust) ---
         try {
           const campusRows = await fetchCSV(CAMPUSES_CSV);
-          const H = buildHeaderMap(campusRows[0] || {});
-          // your campus headers + fallbacks
-          const kDist  = H.get(norm("USER_District_Number")) || H.get(norm("USER District Number")) ||
-                         H.get(norm("DISTRICT_N")) || H.get(norm("DISTRICT_ID"));
-          const kName  = H.get(norm("USER_School_Name"))  || H.get(norm("Campus Name")) || H.get(norm("CAMPUS_NAME")) || H.get(norm("NAME"));
-          const kId    = H.get(norm("USER_School_Number"))|| H.get(norm("Campus ID"))    || H.get(norm("USER_Campus_Number")) || H.get(norm("CAMPUS_ID"));
-          const kScore = H.get(norm("Campus Score"))      || H.get(norm("CAMPUS_SCORE")) || H.get(norm("CampusScore")) || H.get(norm("SCORE"));
-
+          const row0 = campusRows[0] || {};
+          // exact aliases + fuzzy patterns
+          const kDist  = bestHeader(row0,
+             ["USER_District_Number","USER District Number","DISTRICT_N","DISTRICT_ID","LEAID","LEA_ID","LEA CODE","LEA"],
+             [/district.*(number|id|code)/i, /\blea\b/i, /lea.*id/i, /lea.*code/i]
+          );
+          const kName  = bestHeader(row0,
+             ["USER_School_Name","Campus Name","CAMPUS_NAME","NAME","SCHOOL_NAME"],
+             [/campus.*name/i, /school.*name/i]
+          );
+          const kId    = bestHeader(row0,
+             ["USER_School_Number","Campus ID","USER_Campus_Number","CAMPUS_ID","SCHOOL_ID","SCHOOL_NUMBER"],
+             [/campus.*(id|number)/i, /school.*(id|number)/i]
+          );
+          const kScore = bestHeader(row0,
+             ["Campus Score","CAMPUS_SCORE","CampusScore","SCORE","RATING","GRADE"],
+             [/score/i, /rating/i, /grade/i]
+          );
           setCampCols({kName,kId,kScore});
 
+          const chosen = { kDist, kName, kId, kScore };
+          console.info("[Campuses] headers chosen:", chosen, "CSV headers:", Object.keys(row0));
+
           if (kDist) {
-            // prefer the ID from the district row if we found one
-            const wantCanon = canonId(found?.[realKeys[0]] ?? id);
-            let list = campusRows.filter(r => r?.[kDist] != null && canonId(r[kDist]) === wantCanon);
+            // prefer the value we matched on from the row if present
+            const distCanon = canonId(found?.[realKeys[0]] ?? id);
+            let list = campusRows.filter(r => r?.[kDist] != null && canonId(r[kDist]) === distCanon);
             if (kScore) {
               list = list.sort((a,b) => {
                 const A = toNumSafe(a[kScore]); const B = toNumSafe(b[kScore]);
                 if (Number.isNaN(A) && Number.isNaN(B)) return 0;
                 if (Number.isNaN(A)) return 1;
                 if (Number.isNaN(B)) return -1;
-                return B - A; // desc
+                return B - A;
               });
             }
+            console.info(`[Campuses] matched ${list.length} rows for district ${distCanon}`);
             if (alive) setCampuses(list);
           } else {
+            console.warn("[Campuses] Could not detect district id column in campus CSV");
             if (alive) setCampuses([]);
           }
-        } catch { if (alive) setCampuses([]); }
+        } catch (e) {
+          console.warn("[Campuses] CSV load failed:", e);
+          if (alive) setCampuses([]);
+        }
 
       } catch (e) {
         if (alive) setError(String(e));
@@ -141,7 +169,7 @@ export default function DistrictDetail() {
     return () => { alive = false; };
   }, [id]);
 
-  // Title prefers CSV NAME, else GeoJSON name
+  // Title prefers CSV NAME, else GeoJSON
   const displayName =
     (row && (pick(row, hdr, "NAME") || pick(row, hdr, "DISTRICT", "DISTNAME"))) ||
     (geom?.features?.[0]?.properties?.NAME ||
@@ -150,7 +178,7 @@ export default function DistrictDetail() {
     `District ${id}`;
   const county = row ? (pick(row, hdr, "COUNTY") || "") : "";
 
-  // KPIs from the CSV row; tolerant parsing for $, commas
+  // KPIs from CSV row
   const k = (label, ...alts) => toNumSafe(pick(row, hdr, label, ...alts));
   let totalSpending   = k("Total Spending","TOTAL_SPENDING");
   const enrollment    = k("Enrollment","ENROLLMENT","TOTAL_ENROLLMENT","STUDENTS");
@@ -172,9 +200,7 @@ export default function DistrictDetail() {
       <nav className="text-sm text-gray-600">
         <Link className="hover:underline" to="/districts">Districts</Link>
         <span className="px-2">/</span>
-        <span className="text-gray-900 font-medium">
-          {displayName} <span className="text-gray-500">({id})</span>
-        </span>
+        <span className="text-gray-900 font-medium">{displayName}</span>
       </nav>
 
       <header className="bg-white border rounded-2xl p-6">
@@ -184,7 +210,6 @@ export default function DistrictDetail() {
             <p className="text-gray-600 mt-1">{county}</p>
           </div>
 
-          {/* KPI pills */}
           <div className="flex flex-wrap gap-2">
             <StatPill label="Enrollment" value={Number.isNaN(enrollment) ? "—" : num.format(enrollment)} />
             <StatPill label="Per pupil"  value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
@@ -205,13 +230,10 @@ export default function DistrictDetail() {
           : <p className="text-gray-600">No geometry found for this district yet.</p>}
       </section>
 
-      {/* Campuses table */}
       <section className="bg-white border rounded-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Campuses</h2>
-          <div className="text-sm text-gray-500">
-            {campuses.length ? `${campuses.length} campus${campuses.length===1?"":"es"}` : "—"}
-          </div>
+          <div className="text-sm text-gray-500">{campuses.length ? `${campuses.length} campus${campuses.length===1?"":"es"}` : "—"}</div>
         </div>
         {campuses.length === 0 ? (
           <p className="text-gray-600 text-sm">No campuses found for this district.</p>
