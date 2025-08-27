@@ -23,7 +23,7 @@ export default function DistrictMap({ districtId }) {
   useEffect(() => {
     const url = import.meta.env.VITE_TEXAS_GEOJSON;
     fetch(url, { cache: "force-cache" })
-      .then((r) => r.json())
+      .then(async (r) => { if (!r.ok) throw new Error(`HTTP ${r.status} ${url}`); return r.json(); })
       .then((fc) => setGeo(fc))
       .catch((e) => { console.error("Failed to load GeoJSON", e); setGeo(null); });
   }, []);
