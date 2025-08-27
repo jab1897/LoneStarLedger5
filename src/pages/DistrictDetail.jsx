@@ -1,12 +1,17 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
-import { fetchCSV, fetchJSON, indexBy, findFeatureByProp } from "../lib/staticData";
+import { fetchCSV, fetchJSON, findFeatureByProp } from "../lib/staticData";
 import { usd, num } from "../lib/format";
+// Avoid shadowing the global Map class
 import LeafMap from "../ui/Map";
 
-const DISTRICTS_CSV = "/data/Current_Districts_2025.csv";
-const DISTRICTS_GEOJSON = "/data/Current_Districts_2025.geojson";
+const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
+const DISTRICTS_GEOJSON =
+  import.meta.env.VITE_DISTRICTS_GEOJSON ||
+  import.meta.env.VITE_TEXAS_GEOJSON ||
+  "/data/Current_Districts_2025.geojson";
+const CAMPUSES_CSV = import.meta.env.VITE_CAMPUSES_CSV || "/data/Schools_2024_to_2025.csv";
 const KEY = "DISTRICT_N";
 
 // Try split GeoJSON first; fall back to statewide and pick the feature
@@ -21,41 +26,39 @@ async function tryLoadDistrictFeature(id) {
   }
 }
 
-// --- header helpers ----------------------------------------------------------
-const norm = (s) => String(s || "")
-  .toLowerCase()
-  .replace(/[-_ ]+/g, "")         // remove separators
-  .replace(/[^a-z0-9]/g, "");     // strip punctuation
-
-// Build a resolver map from normalized header -> actual header (handles "-1"/"-2")
+// helpers
+const norm = (s) => String(s || "").toLowerCase().replace(/[-_ ]+/g, "").replace(/[^a-z0-9]/g, "");
+const canonId = (v) => String(v ?? "").replace(/['"]/g,"").replace(/\D/g,"").replace(/^0+/, "");
 function buildHeaderMap(row) {
   const map = new globalThis.Map();
-  const keys = Object.keys(row || {});
-  for (const k of keys) {
-    // strip "-<num>" suffix that parsers add for duplicates
+  for (const k of Object.keys(row || {})) {
     const base = k.replace(/-\d+$/, "");
     const nk = norm(base);
     if (!map.has(nk)) map.set(nk, k);
   }
   return map;
 }
-
 function pick(row, hdrMap, ...labels) {
   for (const label of labels) {
     const key = hdrMap.get(norm(label));
-    if (key && row[key] !== undefined && row[key] !== "") return row[key];
+    if (key && row && row[key] !== undefined && row[key] !== "") return row[key];
   }
   return undefined;
 }
+const toNumSafe = (v) => {
+  if (v === null || v === undefined || v === "") return NaN;
+  const s = String(v).replace(/[\$,]/g, "");
+  const n = Number(s);
+  return Number.isNaN(n) ? NaN : n;
+};
 
-const toNum = (v) => (v === null || v === undefined || v === "" ? NaN : Number(v));
-
-// ----------------------------------------------------------------------------
 export default function DistrictDetail(){
   const { id } = useParams();
   const [row, setRow] = React.useState(null);
   const [hdr, setHdr] = React.useState(new globalThis.Map());
   const [geom, setGeom] = React.useState(null);
+  const [campuses, setCampuses] = React.useState([]);
+  const [campCols, setCampCols] = React.useState({kName:null,kId:null,kScore:null});
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
 
@@ -64,42 +67,87 @@ export default function DistrictDetail(){
     setLoading(true); setError(null);
     Promise.allSettled([
       fetchCSV(DISTRICTS_CSV),
-      tryLoadDistrictFeature(id)
-    ]).then(([csvRes, geoRes])=>{
+      tryLoadDistrictFeature(id),
+      fetchCSV(CAMPUSES_CSV),
+    ]).then(([csvRes, geoRes, campRes])=>{
       if(!alive) return;
 
+      // District row
       if (csvRes.status === "fulfilled") {
-        const idx = indexBy(csvRes.value, KEY);
-        const found = idx.get(String(id)) || null;
-        setRow(found);
-        setHdr(buildHeaderMap(found || {}));
+        const rows = csvRes.value || [];
+        const HAll = buildHeaderMap(rows[0] || {});
+        // include a few common id headers in your file
+        const idKeys = ["DISTRICT_N","DISTRICT_C","DISTRICT_ID","SDLEA","ID"]
+          .map(lbl => HAll.get(norm(lbl)))
+          .filter(Boolean);
+        const want = canonId(id);
+        let found = null;
+        for (const k of idKeys) {
+          found = rows.find(r => r?.[k] != null && canonId(r[k]) === want);
+          if (found) break;
+        }
+        setRow(found || null);
+        setHdr(buildHeaderMap(found || rows[0] || {}));
       } else {
         setError(String(csvRes.reason));
       }
 
+      // Geometry
       if (geoRes.status === "fulfilled") setGeom(geoRes.value);
+
+      // Campuses (join on USER_District_Number → DISTRICT_N)
+      if (campRes.status === "fulfilled") {
+        const rows = Array.isArray(campRes.value) ? campRes.value : [];
+        const H = buildHeaderMap(rows[0] || {});
+        // exact names from your CSV + safe fallbacks
+        const kDist  = H.get(norm("USER_District_Number")) || H.get(norm("USER District Number")) ||
+                       H.get(norm("DISTRICT_N")) || H.get(norm("DISTRICT_ID"));
+        const kName  = H.get(norm("USER_School_Name"))  || H.get(norm("Campus Name")) || H.get(norm("CAMPUS_NAME")) || H.get(norm("NAME"));
+        const kId    = H.get(norm("USER_School_Number"))|| H.get(norm("Campus ID"))    || H.get(norm("USER_Campus_Number")) || H.get(norm("CAMPUS_ID"));
+        const kScore = H.get(norm("Campus Score"))      || H.get(norm("CAMPUS_SCORE")) || H.get(norm("CampusScore")) || H.get(norm("SCORE"));
+
+        setCampCols({kName,kId,kScore});
+        if (kDist) {
+          const want = canonId(id);
+          let list = rows.filter(r => r?.[kDist] != null && canonId(r[kDist]) === want);
+          if (kScore) {
+            list = list.sort((a,b) => {
+              const A = toNumSafe(a[kScore]); const B = toNumSafe(b[kScore]);
+              if (Number.isNaN(A) && Number.isNaN(B)) return 0;
+              if (Number.isNaN(A)) return 1;
+              if (Number.isNaN(B)) return -1;
+              return B - A; // desc
+            });
+          }
+          setCampuses(list);
+        } else {
+          setCampuses([]);
+        }
+      }
     }).catch(e => alive && setError(String(e)))
       .finally(()=> alive && setLoading(false));
     return ()=>{ alive = false };
   }, [id]);
 
-  // Name first, ID in gray
+  // Title: prefer CSV NAME, else GeoJSON name
   const displayName =
     (row && (pick(row, hdr, "NAME") || pick(row, hdr, "DISTRICT", "DISTNAME"))) ||
+    (geom?.features?.[0]?.properties?.NAME ||
+     geom?.features?.[0]?.properties?.DISTRICT ||
+     geom?.features?.[0]?.properties?.DISTNAME) ||
     `District ${id}`;
   const county = row ? (pick(row, hdr, "COUNTY") || "") : "";
 
-  // KPIs via robust header resolution
-  let totalSpending   = toNum(pick(row, hdr, "Total Spending"));
-  const enrollment    = toNum(pick(row, hdr, "Enrollment"));
-  const perStudentCSV = toNum(pick(row, hdr, "Average Per-Student Spending"));
-  const districtDebt  = toNum(pick(row, hdr, "Distrit Debt")); // header has typo
-  const perPupilDebt  = toNum(pick(row, hdr, "Per-Pupil Debt"));
-  const teacherSalary = toNum(pick(row, hdr, "Average Teacher Salary"));
-  const principalSal  = toNum(pick(row, hdr, "Average Principal Salary"));
-  const superSalary   = toNum(pick(row, hdr, "Superintendent Salary"));
+  // KPIs using your exact headers with fallbacks
+  let totalSpending   = toNumSafe(pick(row, hdr, "Total Spending", "TOTAL_SPENDING"));
+  const enrollment    = toNumSafe(pick(row, hdr, "Enrollment", "ENROLLMENT"));
+  const perStudentCSV = toNumSafe(pick(row, hdr, "Per-Pupil Spending", "Per Pupil Spending", "Average Per-Student Spending", "Per-Pupil Spending (calc)"));
+  const districtDebt  = toNumSafe(pick(row, hdr, "Distrit Debt", "District Debt", "TOTAL_DEBT"));
+  const perPupilDebt  = toNumSafe(pick(row, hdr, "Per-Pupil Debt", "DEBT_PER_STUDENT"));
+  const teacherSalary = toNumSafe(pick(row, hdr, "Average Teacher Salary", "TEACHER_SALARY"));
+  const principalSal  = toNumSafe(pick(row, hdr, "Average Principal Salary", "PRINCIPAL_SALARY"));
+  const superSalary   = toNumSafe(pick(row, hdr, "Superintendent Salary", "SUPERINTENDENT_SALARY"));
 
-  // Derive per-student if column missing
   const perStudent = !Number.isNaN(perStudentCSV)
     ? perStudentCSV
     : (!Number.isNaN(totalSpending) && !Number.isNaN(enrollment) && enrollment > 0
@@ -123,7 +171,7 @@ export default function DistrictDetail(){
             <p className="text-gray-600 mt-1">{county}</p>
           </div>
 
-          {/* KPIs */}
+          {/* KPI pills */}
           <div className="flex flex-wrap gap-2">
             <StatPill label="Enrollment" value={Number.isNaN(enrollment) ? "—" : num.format(enrollment)} />
             <StatPill label="Per pupil" value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
@@ -144,12 +192,44 @@ export default function DistrictDetail(){
           : <p className="text-gray-600">No geometry found for this district yet.</p>}
       </section>
 
-      {/* Placeholder for next phase */}
-      <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <h2 className="text-xl font-bold">Campuses (coming soon)</h2>
-        <p className="text-gray-600 text-sm">
-          This panel will list campuses in the district, sorted by Campus Score, with search and map markers.
-        </p>
+      {/* Campuses table */}
+      <section className="bg-white border rounded-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-bold">Campuses</h2>
+          <div className="text-sm text-gray-500">
+            {campuses.length ? `${campuses.length} campus${campuses.length===1?"":"es"}` : "—"}
+          </div>
+        </div>
+        {campuses.length === 0 ? (
+          <p className="text-gray-600 text-sm">No campuses found for this district.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
+              <thead className="text-left text-gray-600 border-b">
+                <tr>
+                  <th className="py-2 pr-3">Campus</th>
+                  <th className="py-2 pr-3">ID</th>
+                  <th className="py-2 pr-3">Campus Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {campuses.map((r, i) => {
+                  const name = campCols.kName ? r[campCols.kName] : "";
+                  const cid  = campCols.kId   ? r[campCols.kId]   : "";
+                  const score= campCols.kScore? r[campCols.kScore]: "";
+                  const scoreNum = toNumSafe(score);
+                  return (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="py-2 pr-3 font-medium">{String(name ?? "")}</td>
+                      <td className="py-2 pr-3 text-gray-600">{String(cid ?? "")}</td>
+                      <td className="py-2 pr-3">{Number.isNaN(scoreNum) ? "—" : num.format(scoreNum)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );
