@@ -1,16 +1,30 @@
 import Papa from "papaparse";
 
 export async function fetchCSV(path) {
-  const res = await fetch(path);
+  const res = await fetch(path, { cache: "force-cache" });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
   const text = await res.text();
-  const parsed = Papa.parse(text, { header: true, dynamicTyping: true, skipEmptyLines: true, worker: true });
-  if (parsed.errors?.length) console.warn("CSV parse errors:", parsed.errors.slice(0,3));
-  return parsed.data;
+  let parsed;
+  try {
+    // Keep everything as strings so we do not lose leading zeros on IDs
+    parsed = Papa.parse(text, {
+      header: true,
+      dynamicTyping: false,
+      skipEmptyLines: true,
+      worker: true,
+    });
+  } catch (e) {
+    console.error("Papa.parse failed:", e);
+    throw e;
+  }
+  if (parsed?.errors?.length) {
+    console.warn("CSV parse errors:", parsed.errors.slice(0, 3));
+  }
+  return Array.isArray(parsed?.data) ? parsed.data : [];
 }
 
 export async function fetchJSON(path) {
-  const res = await fetch(path);
+  const res = await fetch(path, { cache: "force-cache" });
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
   return await res.json();
 }
