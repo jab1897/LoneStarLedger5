@@ -1,50 +1,81 @@
 // src/pages/Campuses.jsx
 import React from "react";
-import EntityCard from "../ui/EntityCard";
-import Pagination from "../ui/Pagination";
-import { getAllCampuses } from "../lib/campuses";
+import { Link } from "react-router-dom";
+import { loadCampuses } from "../lib/campuses";
 
-export default function Campuses(){
+const fmt = new Intl.NumberFormat("en-US");
+
+export default function Campuses() {
   const [rows, setRows] = React.useState([]);
   const [fields, setFields] = React.useState(null);
   const [q, setQ] = React.useState("");
-  const [page, setPage] = React.useState(1);
-  const perPage = 24;
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
 
-  React.useEffect(()=>{
-    let alive = true;
-    setLoading(true); setError(null);
-    getAllCampuses()
-      .then(({rows, fields}) => { if(alive){ setRows(rows); setFields(fields);} })
-      .catch(e => { if(alive) setError(String(e)); })
-      .finally(()=> alive && setLoading(false));
-    return ()=>{ alive = false };
+  React.useEffect(() => {
+    let on = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const { rows, fields } = await loadCampuses();
+        if (on) {
+          setRows(rows);
+          setFields(fields);
+        }
+      } catch (e) {
+        if (on) setError(String(e));
+      } finally {
+        if (on) setLoading(false);
+      }
+    })();
+    return () => {
+      on = false;
+    };
   }, []);
 
-  const filtered = React.useMemo(()=>{
-    const needle = q.trim().toLowerCase();
-    if(!needle) return rows;
-    const kName = fields?.CAMPUS_NAME;
-    const kDist = fields?.DISTRICT_ID;
-    const kId = fields?.CAMPUS_ID;
-    return rows.filter(r =>
-      String(kName ? r[kName] : r.CAMPUS || r.name || "").toLowerCase().includes(needle) ||
-      String(kDist ? r[kDist] : r.DISTRICT_N || "").toLowerCase().includes(needle) ||
-      String(kId ? r[kId] : r.id || "").toLowerCase().includes(needle)
-    );
-  }, [rows, q, fields]);
+  const list = React.useMemo(() => {
+    if (!rows?.length || !fields) return [];
+    const f = fields;
+    const nameK = f.CAMPUS_NAME;
+    const idK = f.CAMPUS_ID;
+    const distK = f.DISTRICT_ID;
+    const scoreK = f.CAMPUS_SCORE;
 
-  const start = (page-1)*perPage;
-  const pageItems = filtered.slice(start, start+perPage);
+    let L = rows.map((r) => ({
+      id: idK ? String(r[idK]) : "",
+      name: nameK ? String(r[nameK]) : "",
+      district: distK ? String(r[distK]) : "",
+      score: scoreK ? Number(String(r[scoreK]).replace(/[\$,]/g, "")) : NaN,
+    }));
+
+    const needle = q.trim().toLowerCase();
+    if (needle) {
+      L = L.filter(
+        (x) =>
+          x.name.toLowerCase().includes(needle) ||
+          x.id.toLowerCase().includes(needle) ||
+          x.district.toLowerCase().includes(needle)
+      );
+    }
+
+    L.sort((a, b) => {
+      const s = (Number.isNaN(b.score) ? -Infinity : b.score) - (Number.isNaN(a.score) ? -Infinity : a.score);
+      return s || a.name.localeCompare(b.name);
+    });
+
+    return L;
+  }, [rows, fields, q]);
 
   return (
     <div className="space-y-4">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Campuses</h1>
-        <input value={q} onChange={e=>{ setPage(1); setQ(e.target.value); }}
-          placeholder="Search campus name, ID, or district" className="border rounded-xl px-3 py-2 w-80" />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search campus name, ID, or district"
+          className="border rounded-xl px-3 py-2 w-80"
+        />
       </header>
 
       {error && <div className="bg-white border rounded-2xl p-4 text-red-700">{error}</div>}
@@ -52,19 +83,36 @@ export default function Campuses(){
 
       {!loading && !error && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {pageItems.map((c)=>{
-              const kName = fields?.CAMPUS_NAME;
-              const kId = fields?.CAMPUS_ID;
-              const kDist = fields?.DISTRICT_ID;
-
-              const id = (kId && c[kId]) || c.id || c.CAMPUS || "";
-              const name = (kName && c[kName]) || c.CAMPUS || c.name || `Campus ${id}`;
-              const subtitle = c.DISTRICT || c.district || (kDist ? `District ${c[kDist] ?? ""}` : "");
-              return <EntityCard key={id} title={name} subtitle={subtitle} to={`/campus/${id}`} />;
-            })}
-          </div>
-          <Pagination total={filtered.length} perPage={perPage} page={page} onPageChange={setPage} />
+          {list.length === 0 ? (
+            <div className="bg-white border rounded-2xl p-4 text-gray-600">No campuses.</div>
+          ) : (
+            <div className="bg-white border rounded-2xl p-4 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="text-left text-gray-600 border-b">
+                  <tr>
+                    <th className="py-2 pr-3">Campus</th>
+                    <th className="py-2 pr-3">ID</th>
+                    <th className="py-2 pr-3">District</th>
+                    <th className="py-2 pr-3">Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((c) => (
+                    <tr key={c.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="py-2 pr-3">
+                        <Link className="text-indigo-700 font-medium" to={`/campus/${encodeURIComponent(c.id)}`}>
+                          {c.name}
+                        </Link>
+                      </td>
+                      <td className="py-2 pr-3 text-gray-600">{c.id}</td>
+                      <td className="py-2 pr-3 text-gray-600">{c.district}</td>
+                      <td className="py-2 pr-3">{Number.isNaN(c.score) ? "—" : fmt.format(c.score)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
     </div>
