@@ -52,6 +52,34 @@ const toNumSafe = (v) => {
   const n = Number(s);
   return Number.isNaN(n) ? NaN : n;
 };
+// added helpers for grade and percent
+const gradeFromScore = (s) => {
+  const n = Number(String(s ?? "").replace(/[^0-9.\-]/g, ""));
+  if (Number.isNaN(n)) return null;
+  if (n >= 90) return "A";
+  if (n >= 80) return "B";
+  if (n >= 70) return "C";
+  if (n >= 60) return "D";
+  return "F";
+};
+const gradeColorClass = (g) => {
+  switch (String(g || "").toUpperCase()) {
+    case "A": return "bg-green-800";
+    case "B": return "bg-emerald-800";
+    case "C": return "bg-amber-700";
+    case "D": return "bg-orange-700";
+    case "F": return "bg-red-800";
+    default: return "bg-gray-700";
+  }
+};
+const toPct = (v, digits = 1) => {
+  if (v == null || v === "") return "—";
+  const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
+  if (Number.isNaN(n)) return "—";
+  const clamped = Math.max(0, Math.min(1, n));
+  return `${(clamped * 100).toFixed(digits)}%`;
+};
+
 
 export default function DistrictDetail() {
   const { id } = useParams();
@@ -120,6 +148,19 @@ export default function DistrictDetail() {
       geom?.features?.[0]?.properties?.DISTNAME) ||
     `District ${id}`;
   const county = row ? pick(row, hdr, "COUNTY") || "" : "";
+  // TEA district score and grade with robust header names
+  const _scoreRaw = toNumSafe(pick(
+    row, hdr,
+    "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+    "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL"
+  ));
+  const districtScore = Number.isNaN(_scoreRaw) ? NaN : Math.round(_scoreRaw);
+  const _gradeRaw = pick(
+    row, hdr,
+    "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE"
+  );
+  const districtGrade = _gradeRaw || (!Number.isNaN(_scoreRaw) ? gradeFromScore(_scoreRaw) : null);
+
 
   // KPIs from CSV row
   const k = (label, ...alts) => toNumSafe(pick(row, hdr, label, ...alts));
@@ -181,6 +222,20 @@ export default function DistrictDetail() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
+            {districtGrade ? (
+              <div className="mt-2">
+                <span
+                  data-testid="district-grade"
+                  className={["inline-flex items-center gap-4 rounded-2xl px-5 py-2 leading-none text-white shadow ring-1 ring-black/10", gradeColorClass(districtGrade)].join(" ")} + " text-3xl font-extrabold"
+                  title={`TEA rating ${districtGrade}${Number.isNaN(districtScore) ? "" : ` with score ${districtScore}`}`}
+                >
+                  <span className="tracking-tight">{districtGrade}</span>
+                  <span className="opacity-90">•</span>
+                  <span className="tracking-tight">{Number.isNaN(districtScore) ? "—" : num.format(districtScore)}</span>
+                </span>
+              </div>
+            ) : null}
+
             <p className="text-gray-600 mt-1">{county}</p>
           </div>
 
