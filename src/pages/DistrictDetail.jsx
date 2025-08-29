@@ -181,15 +181,7 @@ export default function DistrictDetail() {
   );
   const districtGrade = _gradeRaw || (!Number.isNaN(_scoreRaw) ? gradeFromScore(_scoreRaw) : null);
 // final values used by the ribbon
-const ribbonScore = !Number.isNaN(ribbonScore) ? districtScore
-                   : (typeof __campusScoreFallback !== "undefined" ? __campusScoreFallback : NaN);
-const ribbonGrade = (districtGrade && String(districtGrade).trim())
-                   ? String(districtGrade).trim().toUpperCase()
-                   : (!Number.isNaN(ribbonScore) ? gradeFromScore(ribbonScore) : null);
-
-
-
-  // KPIs from CSV row
+// KPIs from CSV row
   const k = (label, ...alts) => toNumSafe(pick(row, hdr, label, ...alts));
   let totalSpending = k("Total Spending", "TOTAL_SPENDING");
   const enrollment = k("Enrollment", "ENROLLMENT", "TOTAL_ENROLLMENT", "STUDENTS");
