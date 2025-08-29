@@ -180,6 +180,13 @@ export default function DistrictDetail() {
     "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE"
   );
   const districtGrade = _gradeRaw || (!Number.isNaN(_scoreRaw) ? gradeFromScore(_scoreRaw) : null);
+// final values used by the ribbon
+const ribbonScore = !Number.isNaN(ribbonScore) ? districtScore
+                   : (typeof __campusScoreFallback !== "undefined" ? __campusScoreFallback : NaN);
+const ribbonGrade = (districtGrade && String(districtGrade).trim())
+                   ? String(districtGrade).trim().toUpperCase()
+                   : (!Number.isNaN(ribbonScore) ? gradeFromScore(ribbonScore) : null);
+
 
 
   // KPIs from CSV row
@@ -242,21 +249,21 @@ export default function DistrictDetail() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
-            {districtGrade ? (
+            {(ribbonGrade || !Number.isNaN(ribbonScore)) ? (
               <div className="mt-2">
                 <span
                   data-testid="district-grade"
                   className={[
   "inline-flex items-center gap-4 rounded-2xl px-5 py-2 leading-none text-white shadow ring-1 ring-black/10",
-  gradeColorClass(districtGrade),
+  gradeColorClass(ribbonGrade),
   "text-3xl",
   "font-extrabold"
 ].join(" ")}
-                  title={`TEA rating ${districtGrade}${Number.isNaN(districtScore) ? "" : ` with score ${districtScore}`}`}
+                  title={`TEA rating ${ribbonGrade}${Number.isNaN(ribbonScore) ? "" : ` with score ${ribbonScore}`}`}
                 >
-                  <span className="tracking-tight">{districtGrade}</span>
+                  <span className="tracking-tight">{ribbonGrade}</span>
                   <span className="opacity-90">•</span>
-                  <span className="tracking-tight">{Number.isNaN(districtScore) ? "—" : num.format(districtScore)}</span>
+                  <span className="tracking-tight">{Number.isNaN(ribbonScore) ? "—" : num.format(ribbonScore)}</span>
                 </span>
               </div>
             ) : null}
