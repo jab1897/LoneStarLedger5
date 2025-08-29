@@ -1,5 +1,25 @@
 // src/pages/DistrictDetail.jsx
 import React from "react";
+// safe fetch for GeoJSON with optional CDN base
+const GEO_BASE = import.meta?.env?.VITE_GEOJSON_BASE || "";
+async function fetchGeoSafe(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return await r.json();
+  } catch (err) {
+    try {
+      if (GEO_BASE && !/^https?:\/\//i.test(url)) {
+        const alt = `${GEO_BASE.replace(/\/$/, "")}${url.startsWith("/") ? url : `/${url}`}`;
+        const r2 = await fetch(alt);
+        if (r2.ok) return await r2.json();
+      }
+    } catch (_) {}
+    console.warn("[Map] GeoJSON not found:", url);
+    return null;
+  }
+}
+
 import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
 import { fetchJSON, findFeatureByProp } from "../lib/staticData";
@@ -314,8 +334,8 @@ export default function DistrictDetail() {
                       <td className="py-2 pr-3 text-gray-600">{c.id}</td>
                       <td className="py-2 pr-3">{Number.isNaN(c.score) ? "—" : num.format(c.score)}</td>
                       <td className="py-2 pr-3">{grade ?? "—"}</td>
-                      <td className="py-2 pr-3">{read ?? "—"}</td>
-                      <td className="py-2 pr-3">{math ?? "—"}</td>
+                      <td className="py-2 pr-3">{toPct(read)}</td>
+                      <td className="py-2 pr-3">{toPct(math)}</td>
                       <td className="py-2 pr-3 text-right">{tcnt ?? "—"}</td>
                       <td className="py-2 pr-3 text-right">{acnt ?? "—"}</td>
                     </tr>
