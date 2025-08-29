@@ -226,7 +226,12 @@ export default function DistrictDetail() {
               <div className="mt-2">
                 <span
                   data-testid="district-grade"
-                  className={["inline-flex items-center gap-4 rounded-2xl px-5 py-2 leading-none text-white shadow ring-1 ring-black/10", gradeColorClass(districtGrade)].join(" ")} + " text-3xl font-extrabold"
+                  className={[
+  "inline-flex items-center gap-4 rounded-2xl px-5 py-2 leading-none text-white shadow ring-1 ring-black/10",
+  gradeColorClass(districtGrade),
+  "text-3xl",
+  "font-extrabold"
+].join(" ")}
                   title={`TEA rating ${districtGrade}${Number.isNaN(districtScore) ? "" : ` with score ${districtScore}`}`}
                 >
                   <span className="tracking-tight">{districtGrade}</span>
