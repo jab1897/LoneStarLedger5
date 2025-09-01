@@ -94,6 +94,35 @@ const gradeColorClass = (g) => {
 };
 const toPct = (v, digits = 1) => {
   if (v == null || v === "") return "—";
+// Compute ribbon grade and score without React imports
+function resolveRibbonValues(row, hdr, campuses) {
+  // read score from common header aliases
+  const raw = toNumSafe(pick(
+    row, hdr,
+    "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+    "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL",
+    "Overall Scaled Score","Scaled Score"
+  ));
+  let score = Number.isNaN(raw) ? NaN : Math.round(raw);
+
+  // read grade from common header aliases
+  let grade = pick(
+    row, hdr,
+    "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE","Accountability Rating"
+  );
+  grade = grade ? String(grade).trim().toUpperCase() : null;
+
+  // fallback to campus average if district score missing
+  if (!Number.isFinite(score) && Array.isArray(campuses)) {
+    const nums = campuses.map(c => Number(c?.score)).filter(n => Number.isFinite(n));
+    if (nums.length) score = Math.round(nums.reduce((a,b)=>a+b,0) / nums.length);
+  }
+
+  if (!grade && Number.isFinite(score)) grade = gradeFromScore(score);
+
+  return { grade, score };
+}
+
   const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
   if (Number.isNaN(n)) return "—";
   const clamped = Math.max(0, Math.min(1, n));
@@ -157,40 +186,11 @@ export default function DistrictDetail() {
 
 
 
-// --- ribbon values: single source of truth (always defined here) ---
-const { grade: ribbonGrade, score: ribbonScore } = useMemo(() => {
-  const pickNum = (v) => {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : NaN;
-  };
 
-  // prefer district-level values if present
-  const s1 = (typeof districtScore !== "undefined") ? pickNum(ribbonScore) : NaN;
-  const s2 = (typeof __districtScore !== "undefined") ? pickNum(__ribbonScore) : NaN;
-  const s3 = (typeof __districtScoreRaw !== "undefined") ? pickNum(__districtScoreRaw) : NaN;
-
-  let score = Number.isFinite(s1) ? s1 : (Number.isFinite(s2) ? s2 : (Number.isFinite(s3) ? round(s3) : NaN));
-  function round(x){ return Math.round(Number(x)); }
-
-  // fallback: average campus scores
-  if (!Number.isFinite(score)) {
-    const list = (typeof campuses !== "undefined" && campuses ? campuses : [])
-      .map(c => pickNum(c?.score))
-      .filter(Number.isFinite);
-    if (list.length) score = round(list.reduce((a,b)=>a+b,0) / list.length);
-  }
-
-  // grade from headers if present, else derive from score
-  let grade = null;
-  const dg = (typeof districtGrade !== "undefined" ? districtGrade : undefined)
-          || (typeof __districtGradeRaw !== "undefined" ? __districtGradeRaw : undefined)
-          || null;
-  if (dg != null && String(dg).trim() !== "") grade = String(dg).trim().toUpperCase();
-  if (!grade && Number.isFinite(score)) grade = gradeFromScore(score);
-
-  return { grade, score };
-}, [typeof campuses === "undefined" ? null : campuses]);
 // --- end ribbon block ---
+
+// Ribbon values from the data
+const { grade: ribbonGrade, score: ribbonScore } = resolveRibbonValues(row, hdr, campuses);
 return () => {
       alive = false;
     };
