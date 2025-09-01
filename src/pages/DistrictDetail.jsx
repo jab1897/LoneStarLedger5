@@ -168,6 +168,19 @@ export default function DistrictDetail() {
       geom?.features?.[0]?.properties?.DISTNAME) ||
     `District ${id}`;
   const county = row ? pick(row, hdr, "COUNTY") || "" : "";
+  // District-level values from headers (raw)
+  const __districtScoreRaw = toNumSafe(pick(
+    row, hdr,
+    "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+    "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL",
+    "Overall Scaled Score","Scaled Score"
+  ));
+  const __districtScore = Number.isNaN(__districtScoreRaw) ? NaN : Math.round(__districtScoreRaw);
+  const __districtGradeRaw = pick(
+    row, hdr,
+    "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE","Accountability Rating"
+  );
+
   // TEA district score and grade with robust header names
   const _scoreRaw = toNumSafe(pick(
     row, hdr,
