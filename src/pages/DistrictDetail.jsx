@@ -95,29 +95,6 @@ const gradeColorClass = (g) => {
 const toPct = (v, digits = 1) => {
   if (v == null || v === "") return "—";
 // Compute ribbon grade and score without React imports
-function resolveRibbonValues(row, hdr, campuses) {
-  // read score from common header aliases
-  const raw = toNumSafe(pick(
-    row, hdr,
-    "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
-    "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL",
-    "Overall Scaled Score","Scaled Score"
-  ));
-  let score = Number.isNaN(raw) ? NaN : Math.round(raw);
-
-  // read grade from common header aliases
-  let grade = pick(
-    row, hdr,
-    "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE","Accountability Rating"
-  );
-  grade = grade ? String(grade).trim().toUpperCase() : null;
-
-  // fallback to campus average if district score missing
-  if (!Number.isFinite(score) && Array.isArray(campuses)) {
-    const nums = campuses.map(c => Number(c?.score)).filter(n => Number.isFinite(n));
-    if (nums.length) score = Math.round(nums.reduce((a,b)=>a+b,0) / nums.length);
-  }
-
   if (!grade && Number.isFinite(score)) grade = gradeFromScore(score);
 
   return { grade, score };
@@ -189,8 +166,34 @@ export default function DistrictDetail() {
 
 // --- end ribbon block ---
 
-// Ribbon values from the data
-const { grade: ribbonGrade, score: ribbonScore } = resolveRibbonValues(row, hdr, campuses);
+// --- ribbon compute (inline, no React hooks) ---
+let ribbonScore = NaN;
+let ribbonGrade = null;
+
+// District-level values (many header aliases)
+const __scoreRaw = toNumSafe(pick(
+  row, hdr,
+  "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+  "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL",
+  "Overall Scaled Score","Scaled Score"
+));
+if (!Number.isNaN(__scoreRaw)) ribbonScore = Math.round(__scoreRaw);
+
+let __gradeRaw = pick(
+  row, hdr,
+  "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE","Accountability Rating"
+);
+if (__gradeRaw) ribbonGrade = String(__gradeRaw).trim().toUpperCase();
+
+// Fallback: average campus scores if district score missing
+if (!Number.isFinite(ribbonScore) && Array.isArray(campuses)) {
+  const __scores = campuses.map(c => Number(c?.score)).filter(Number.isFinite);
+  if (__scores.length) ribbonScore = Math.round(__scores.reduce((a,b)=>a+b,0) / __scores.length);
+}
+
+// Derive letter if missing
+if (!ribbonGrade && Number.isFinite(ribbonScore)) ribbonGrade = gradeFromScore(ribbonScore);
+// --- end inline ribbon compute ---
 return () => {
       alive = false;
     };
