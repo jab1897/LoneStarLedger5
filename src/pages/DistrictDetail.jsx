@@ -155,7 +155,46 @@ export default function DistrictDetail() {
       }
     })();
 
-    return () => {
+    
+// --- ribbon values: always defined in this scope ---
+const { grade: ribbonGrade, score: ribbonScore } = useMemo(() => {
+  let score = NaN;
+
+  // Try various district-level score variables if they exist
+  try {
+    if (typeof districtScore !== "undefined" && Number.isFinite(ribbonScore)) {
+      score = districtScore;
+    } else if (typeof __districtScore !== "undefined" && Number.isFinite(__ribbonScore)) {
+      score = __districtScore;
+    } else if (typeof __districtScoreRaw !== "undefined" && Number.isFinite(__districtScoreRaw)) {
+      score = Math.round(__districtScoreRaw);
+    }
+  } catch (_) {}
+
+  // Fallback: average campus scores
+  if (Number.isNaN(score)) {
+    try {
+      const arr = (typeof campuses !== "undefined" && campuses ? campuses : [])
+        .map(c => Number(c?.score))
+        .filter(n => Number.isFinite(n));
+      if (arr.length) score = Math.round(arr.reduce((a,b)=>a+b,0) / arr.length);
+    } catch (_) {}
+  }
+
+  // Resolve grade from any provided header vars or derive from score
+  let grade = null;
+  try {
+    const g = (typeof districtGrade !== "undefined" && districtGrade)
+           || (typeof __districtGradeRaw !== "undefined" && __districtGradeRaw)
+           || null;
+    grade = g ? String(g).trim().toUpperCase() : null;
+  } catch (_) {}
+
+  if (!grade && Number.isFinite(score)) grade = gradeFromScore(score);
+  return { grade, score };
+}, [/* deps */ typeof campuses === "undefined" ? null : campuses]); 
+// --- end ribbon block ---
+return () => {
       alive = false;
     };
   }, [id]);
