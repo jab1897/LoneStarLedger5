@@ -1,7 +1,13 @@
 // src/pages/DistrictDetail.jsx
-import React from "react";
+import { Link, useParams } from "react-router-dom";
+import StatPill from "../ui/StatPill";
+import { fetchJSON, findFeatureByProp } from "../lib/staticData";
+import { usd, num } from "../lib/format";
+import LeafMap from "../ui/Map";
+import { loadDistrictsCSV } from "../lib/data";
+import { getCampusesForDistrict } from "../lib/campuses";
 
-/* === LSL Ribbon helpers (stable) === */
+/* === LSL ribbon helpers (stable, single copy) === */
 function gradeFromScore(s) {
   var n = Number(String(s == null ? "" : s).replace(/[^0-9.\-]/g, ""));
   if (!Number.isFinite(n)) return null;
@@ -28,34 +34,7 @@ function toPct(v, digits) {
   var clamped = Math.max(0, Math.min(1, n));
   return (clamped * 100).toFixed(digits) + "%";
 }
-/* === end LSL Ribbon helpers === */
-// safe fetch for GeoJSON with optional CDN base
-const GEO_BASE = import.meta?.env?.VITE_GEOJSON_BASE || "";
-async function fetchGeoSafe(url) {
-  try {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    return await r.json();
-  } catch (err) {
-    try {
-      if (GEO_BASE && !/^https?:\/\//i.test(url)) {
-        const alt = `${GEO_BASE.replace(/\/$/, "")}${url.startsWith("/") ? url : `/${url}`}`;
-        const r2 = await fetch(alt);
-        if (r2.ok) return await r2.json();
-      }
-    } catch (_) {}
-    console.warn("[Map] GeoJSON not found:", url);
-    return null;
-  }
-}
-
-import { Link, useParams } from "react-router-dom";
-import StatPill from "../ui/StatPill";
-import { fetchJSON, findFeatureByProp } from "../lib/staticData";
-import { usd, num } from "../lib/format";
-import LeafMap from "../ui/Map";
-import { loadDistrictsCSV } from "../lib/data";
-import { getCampusesForDistrict } from "../lib/campuses";
+/* === end LSL ribbon helpers === */
 
 const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON =
