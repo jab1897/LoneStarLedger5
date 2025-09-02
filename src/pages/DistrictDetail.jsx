@@ -1,5 +1,34 @@
 // src/pages/DistrictDetail.jsx
 import React from "react";
+
+/* === LSL Ribbon helpers (stable) === */
+function gradeFromScore(s) {
+  var n = Number(String(s == null ? "" : s).replace(/[^0-9.\-]/g, ""));
+  if (!Number.isFinite(n)) return null;
+  if (n >= 90) return "A";
+  if (n >= 80) return "B";
+  if (n >= 70) return "C";
+  if (n >= 60) return "D";
+  return "F";
+}
+function gradeColorClass(g) {
+  var t = String(g == null ? "" : g).toUpperCase();
+  if (t === "A") return "bg-green-800";
+  if (t === "B") return "bg-emerald-800";
+  if (t === "C") return "bg-amber-700";
+  if (t === "D") return "bg-orange-700";
+  if (t === "F") return "bg-red-800";
+  return "bg-gray-700";
+}
+function toPct(v, digits) {
+  if (digits === void 0) digits = 1;
+  if (v == null || v === "") return "—";
+  var n = Number(String(v).replace(/[^0-9.\-]/g, ""));
+  if (!Number.isFinite(n)) return "—";
+  var clamped = Math.max(0, Math.min(1, n));
+  return (clamped * 100).toFixed(digits) + "%";
+}
+/* === end LSL Ribbon helpers === */
 // safe fetch for GeoJSON with optional CDN base
 const GEO_BASE = import.meta?.env?.VITE_GEOJSON_BASE || "";
 async function fetchGeoSafe(url) {
@@ -73,34 +102,9 @@ const toNumSafe = (v) => {
   return Number.isNaN(n) ? NaN : n;
 };
 // added helpers for grade and percent
-const gradeFromScore = (s) => {
-  const n = Number(String(s ?? "").replace(/[^0-9.\-]/g, ""));
-  if (Number.isNaN(n)) return null;
-  if (n >= 90) return "A";
-  if (n >= 80) return "B";
-  if (n >= 70) return "C";
-  if (n >= 60) return "D";
-  return "F";
-};
-const gradeColorClass = (g) => {
-  switch (String(g || "").toUpperCase()) {
-    case "A": return "bg-green-800";
-    case "B": return "bg-emerald-800";
-    case "C": return "bg-amber-700";
-    case "D": return "bg-orange-700";
-    case "F": return "bg-red-800";
-    default: return "bg-gray-700";
-  }
-};
-const toPct = (v, digits = 1) => {
-  if (v == null || v === "") return "—";
-// Compute ribbon grade and score without React imports
-  if (!grade && Number.isFinite(score)) grade = gradeFromScore(score);
 
-  return { grade, score };
-}
 
-  const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
+const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
   if (Number.isNaN(n)) return "—";
   const clamped = Math.max(0, Math.min(1, n));
   return `${(clamped * 100).toFixed(digits)}%`;
