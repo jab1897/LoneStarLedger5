@@ -1,5 +1,4 @@
 // src/pages/DistrictDetail.jsx
-import React from "react";
 import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
 import { fetchJSON, findFeatureByProp } from "../lib/staticData";
@@ -7,6 +6,56 @@ import { usd, num } from "../lib/format";
 import LeafMap from "../ui/Map";
 import { loadDistrictsCSV } from "../lib/data";
 import { getCampusesForDistrict } from "../lib/campuses";
+import { gradeFromScore, gradeColorClass, toPct } from "../lib/ribbon";
+
+/** Compute district grade/score; fall back to campus average if district row missing. */
+function computeRibbon(row, hdr, campuses) {
+  // Score aliases
+  var scoreAliases = [
+    "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+    "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL",
+    "Overall Scaled Score","Scaled Score"
+  ];
+  // Grade aliases
+  var gradeAliases = [
+    "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE","Accountability Rating"
+  ];
+  // pull numeric score
+  var raw = toNumSafe(pick.apply(null, [row, hdr].concat(scoreAliases)));
+  var score = Number.isNaN(raw) ? NaN : Math.round(raw);
+  // pull letter grade
+  var g = pick.apply(null, [row, hdr].concat(gradeAliases));
+  var grade = g ? String(g).trim().toUpperCase() : null;
+
+  // fallback to campus average
+  if (!Number.isFinite(score) && Array.isArray(campuses)) {
+    var nums = campuses.map(function(c){ return Number(c && c.score); }).filter(function(n){ return Number.isFinite(n); });
+    if (nums.length) score = Math.round(nums.reduce(function(a,b){ return a + b; }, 0) / nums.length);
+  }
+
+  if (!grade && Number.isFinite(score)) grade = gradeFromScore(score);
+  return { grade: grade, score: score };
+}
+
+function gradeColorClass(g) {
+  var t = String(g == null ? "" : g).toUpperCase();
+  if (t === "A") return "bg-green-800";
+  if (t === "B") return "bg-emerald-800";
+  if (t === "C") return "bg-amber-700";
+  if (t === "D") return "bg-orange-700";
+  if (t === "F") return "bg-red-800";
+  return "bg-gray-700";
+/* === end LSL ribbon helpers === */
+
+function gradeColorClass(g) {
+  var t = String(g == null ? "" : g).toUpperCase();
+  if (t === "A") return "bg-green-800";
+  if (t === "B") return "bg-emerald-800";
+  if (t === "C") return "bg-amber-700";
+  if (t === "D") return "bg-orange-700";
+  if (t === "F") return "bg-red-800";
+  return "bg-gray-700";
+/* === end LSL ribbon helpers === */
 
 const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON =
@@ -52,6 +101,15 @@ const toNumSafe = (v) => {
   const n = Number(s);
   return Number.isNaN(n) ? NaN : n;
 };
+// added helpers for grade and percent
+
+
+const n = Number(String(v).replace(/[^0-9.\-]/g, ""));
+  if (Number.isNaN(n)) return "—";
+  const clamped = Math.max(0, Math.min(1, n));
+  return `${(clamped * 100).toFixed(digits)}%`;
+};
+
 
 export default function DistrictDetail() {
   const { id } = useParams();
@@ -107,7 +165,46 @@ export default function DistrictDetail() {
       }
     })();
 
-    return () => {
+
+
+
+// --- end ribbon block ---
+
+// --- ribbon compute (inline, no React hooks) ---
+let ribbonScore = NaN;
+let ribbonGrade = null;
+
+// District-level values (many header aliases)
+const __scoreRaw = toNumSafe(pick(
+  row, hdr,
+  "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+  "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL",
+  "Overall Scaled Score","Scaled Score"
+));
+if (!Number.isNaN(__scoreRaw)) ribbonScore = Math.round(__scoreRaw);
+
+let __gradeRaw = pick(
+  row, hdr,
+  "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE","Accountability Rating"
+);
+if (__gradeRaw) ribbonGrade = String(__gradeRaw).trim().toUpperCase();
+
+// Fallback: average campus scores if district score missing
+if (!Number.isFinite(ribbonScore) && Array.isArray(campuses)) {
+  const __scores = campuses.map(c => Number(c?.score)).filter(Number.isFinite);
+  if (__scores.length) ribbonScore = Math.round(__scores.reduce((a,b)=>a+b,0) / __scores.length);
+}
+
+// Derive letter if missing
+if (!ribbonGrade && Number.isFinite(ribbonScore)) ribbonGrade = gradeFromScore(ribbonScore);
+// --- end inline ribbon compute ---
+
+/* LSL:RIBBON VARS */
+var __rb = computeRibbon(row, hdr, campuses);
+var ribbonGrade = __rb.grade;
+var ribbonScore = __rb.score;
+/* END LSL:RIBBON VARS */
+return () => {
       alive = false;
     };
   }, [id]);
@@ -120,8 +217,33 @@ export default function DistrictDetail() {
       geom?.features?.[0]?.properties?.DISTNAME) ||
     `District ${id}`;
   const county = row ? pick(row, hdr, "COUNTY") || "" : "";
+  // District-level values from headers (raw)
+  const __districtScoreRaw = toNumSafe(pick(
+    row, hdr,
+    "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+    "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL",
+    "Overall Scaled Score","Scaled Score"
+  ));
+  const __districtScore = Number.isNaN(__districtScoreRaw) ? NaN : Math.round(__districtScoreRaw);
+  const __districtGradeRaw = pick(
+    row, hdr,
+    "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE","Accountability Rating"
+  );
 
-  // KPIs from CSV row
+  // TEA district score and grade with robust header names
+  const _scoreRaw = toNumSafe(pick(
+    row, hdr,
+    "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+    "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL"
+  ));
+  const districtScore = Number.isNaN(_scoreRaw) ? NaN : Math.round(_scoreRaw);
+  const _gradeRaw = pick(
+    row, hdr,
+    "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE"
+  );
+  const districtGrade = _gradeRaw || (!Number.isNaN(_scoreRaw) ? gradeFromScore(_scoreRaw) : null);
+// final values used by the ribbon
+// KPIs from CSV row
   const k = (label, ...alts) => toNumSafe(pick(row, hdr, label, ...alts));
   let totalSpending = k("Total Spending", "TOTAL_SPENDING");
   const enrollment = k("Enrollment", "ENROLLMENT", "TOTAL_ENROLLMENT", "STUDENTS");
@@ -181,6 +303,36 @@ export default function DistrictDetail() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
+<div data-testid="district-grade-wrapper" className="mt-2">
+  <span
+    data-testid="district-grade"
+    className={"inline-flex items-center gap-3 rounded-2xl px-4 py-1.5 text-white shadow ring-1 ring-black/10 " + gradeColorClass(ribbonGrade || "Unrated")}
+    title={"TEA rating " + (ribbonGrade || "Unrated") + (Number.isFinite(ribbonScore) ? " · score " + ribbonScore : "")}
+  >
+    <span className="text-2xl font-extrabold leading-none">{ribbonGrade || "Unrated"}</span>
+    {Number.isFinite(ribbonScore) ? <span className="ml-2 text-xl font-semibold leading-none">{ribbonScore}</span> : null}
+  </span>
+</div>
+
+            {(ribbonGrade || !Number.isNaN(ribbonScore)) ? (
+              <div className="mt-2">
+                <span
+                  data-testid="district-grade"
+                  className={[
+  "inline-flex items-center gap-4 rounded-2xl px-5 py-2 leading-none text-white shadow ring-1 ring-black/10",
+  gradeColorClass(ribbonGrade),
+  "text-3xl",
+  "font-extrabold"
+].join(" ")}
+                  title={`TEA rating ${ribbonGrade}${Number.isNaN(ribbonScore) ? "" : ` with score ${ribbonScore}`}`}
+                >
+                  <span className="tracking-tight">{ribbonGrade}</span>
+                  <span className="opacity-90">•</span>
+                  <span className="tracking-tight">{Number.isNaN(ribbonScore) ? "—" : num.format(ribbonScore)}</span>
+                </span>
+              </div>
+            ) : null}
+
             <p className="text-gray-600 mt-1">{county}</p>
           </div>
 
@@ -254,8 +406,8 @@ export default function DistrictDetail() {
                       <td className="py-2 pr-3 text-gray-600">{c.id}</td>
                       <td className="py-2 pr-3">{Number.isNaN(c.score) ? "—" : num.format(c.score)}</td>
                       <td className="py-2 pr-3">{grade ?? "—"}</td>
-                      <td className="py-2 pr-3">{read ?? "—"}</td>
-                      <td className="py-2 pr-3">{math ?? "—"}</td>
+                      <td className="py-2 pr-3">{toPct(read)}</td>
+                      <td className="py-2 pr-3">{toPct(math)}</td>
                       <td className="py-2 pr-3 text-right">{tcnt ?? "—"}</td>
                       <td className="py-2 pr-3 text-right">{acnt ?? "—"}</td>
                     </tr>
