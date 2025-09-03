@@ -36,6 +36,16 @@ function toPct(v, digits) {
 }
 /* === end LSL ribbon helpers === */
 
+function gradeColorClass(g) {
+  var t = String(g == null ? "" : g).toUpperCase();
+  if (t === "A") return "bg-green-800";
+  if (t === "B") return "bg-emerald-800";
+  if (t === "C") return "bg-amber-700";
+  if (t === "D") return "bg-orange-700";
+  if (t === "F") return "bg-red-800";
+  return "bg-gray-700";
+/* === end LSL ribbon helpers === */
+
 const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON =
   import.meta.env.VITE_DISTRICTS_GEOJSON ||
