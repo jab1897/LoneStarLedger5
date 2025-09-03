@@ -234,7 +234,8 @@ export default function DistrictDetail() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
-            <div data-testid="district-grade-wrapper" className="mt-2">
+            <div data-testid="district-grade-wrapper" className="mt-2 flex items-center gap-3">
+              <span className="text-2xl font-bold">District Grade</span>
               <span
                 data-testid="district-grade"
                 className={
