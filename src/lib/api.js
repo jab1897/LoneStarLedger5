@@ -5,7 +5,10 @@ export async function getJSON(path, { signal } = {}) {
   const ctrl = new AbortController();
   const timeout = setTimeout(() => ctrl.abort(), DEFAULT_TIMEOUT);
   const onAbort = () => ctrl.abort();
-  if (signal) signal.addEventListener("abort", onAbort);
+  if (signal) {
+    if (signal.aborted) ctrl.abort();
+    else signal.addEventListener("abort", onAbort);
+  }
   try {
     const res = await fetch(API_BASE + path, { signal: ctrl.signal });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
