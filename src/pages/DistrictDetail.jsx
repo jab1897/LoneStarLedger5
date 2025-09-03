@@ -7,6 +7,7 @@ import { usd, num } from "../lib/format";
 import LeafMap from "../ui/Map";
 import { loadDistrictsCSV } from "../lib/data";
 import { getCampusesForDistrict } from "../lib/campuses";
+import { gradeFromScore, gradeColorClass, toPct } from "../lib/ribbon";
 
 const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON =
@@ -29,7 +30,9 @@ async function tryLoadDistrictFeature(id) {
 }
 
 // helpers
-const norm = (s) => String(s || "").toLowerCase().replace(/[-_ ]+/g, "").replace(/[^a-z0-9]/g, "");
+function norm(s) {
+  return String(s || "").toLowerCase().replace(/[-_ ]+/g, "").replace(/[^a-z0-9]/g, "");
+}
 function buildHeaderMap(row) {
   const map = new globalThis.Map();
   for (const k of Object.keys(row || {})) {
@@ -46,12 +49,12 @@ function pick(row, hdrMap, ...labels) {
   }
   return undefined;
 }
-const toNumSafe = (v) => {
+function toNumSafe(v) {
   if (v === null || v === undefined || v === "") return NaN;
   const s = String(v).replace(/[\$,]/g, "");
   const n = Number(s);
   return Number.isNaN(n) ? NaN : n;
-};
+}
 
 export default function DistrictDetail() {
   const { id } = useParams();
@@ -67,16 +70,19 @@ export default function DistrictDetail() {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
 
-  React.useEffect(() => {
+  React.useEffect(function () {
     let alive = true;
     setLoading(true);
     setError(null);
 
-    (async () => {
+    (async function () {
       try {
         // Districts (for KPIs + name)
         const { rows, fields: F } = await loadDistrictsCSV(DISTRICTS_CSV);
-        const found = rows.find((r) => String(r[F.ID] ?? "") === String(id)) || null;
+        const found =
+          rows.find(function (r) {
+            return String(r[F.ID] ?? "") === String(id);
+          }) || null;
         setRow(found);
         setHdr(buildHeaderMap(found || rows[0] || {}));
 
@@ -107,7 +113,7 @@ export default function DistrictDetail() {
       }
     })();
 
-    return () => {
+    return function () {
       alive = false;
     };
   }, [id]);
@@ -122,7 +128,10 @@ export default function DistrictDetail() {
   const county = row ? pick(row, hdr, "COUNTY") || "" : "";
 
   // KPIs from CSV row
-  const k = (label, ...alts) => toNumSafe(pick(row, hdr, label, ...alts));
+  function k(label) {
+    var alts = Array.prototype.slice.call(arguments, 1);
+    return toNumSafe(pick.apply(null, [row, hdr, label].concat(alts)));
+  }
   let totalSpending = k("Total Spending", "TOTAL_SPENDING");
   const enrollment = k("Enrollment", "ENROLLMENT", "TOTAL_ENROLLMENT", "STUDENTS");
   const perStudentCSV = k("Average Per-Student Spending", "Per-Pupil Spending", "Per Pupil Spending");
@@ -139,33 +148,77 @@ export default function DistrictDetail() {
     : NaN;
 
   // campuses table (search + sort by score desc)
-  const campusesSorted = React.useMemo(() => {
-    if (!campuses?.length || !campFields) return [];
-    const f = campFields;
-    const nameK = f.CAMPUS_NAME;
-    const idK = f.CAMPUS_ID;
-    const scoreK = f.CAMPUS_SCORE;
+  var campusesSorted = [];
+  if (campuses && campuses.length && campFields) {
+    var f = campFields;
+    var nameK = f.CAMPUS_NAME;
+    var idK = f.CAMPUS_ID;
+    var scoreK = f.CAMPUS_SCORE;
 
-    let list = campuses.map((r) => ({
-      id: idK ? String(r[idK]) : "",
-      name: nameK ? String(r[nameK]) : "",
-      score: scoreK ? toNumSafe(r[scoreK]) : NaN,
-      raw: r,
-    }));
+    var list = campuses.map(function (r) {
+      return {
+        id: idK ? String(r[idK]) : "",
+        name: nameK ? String(r[nameK]) : "",
+        score: scoreK ? toNumSafe(r[scoreK]) : NaN,
+        raw: r,
+      };
+    });
 
-    const q = campSearch.trim().toLowerCase();
-    if (q) list = list.filter((x) => x.name.toLowerCase().includes(q) || x.id.includes(q));
+    var q = campSearch.trim().toLowerCase();
+    if (q)
+      list = list.filter(function (x) {
+        return x.name.toLowerCase().includes(q) || x.id.includes(q);
+      });
 
-    list.sort((a, b) => {
-      const s = (Number.isNaN(b.score) ? -Infinity : b.score) - (Number.isNaN(a.score) ? -Infinity : a.score);
+    list.sort(function (a, b) {
+      var s =
+        (Number.isNaN(b.score) ? -Infinity : b.score) -
+        (Number.isNaN(a.score) ? -Infinity : a.score);
       return s || a.name.localeCompare(b.name);
     });
 
-    return list;
-  }, [campuses, campFields, campSearch]);
+    campusesSorted = list;
+  }
 
   if (loading) return <div className="p-6">Loading…</div>;
   if (error) return <div className="p-6 text-red-700">Error: {error}</div>;
+
+  /* LSL:RIBBON VARS (no hooks, no arrows) */
+  var ribbonScore = NaN;
+  var ribbonGrade = null;
+
+  // aliases for district-level score/grade
+  var SCORE_KEYS = [
+    "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+    "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL",
+    "Overall Scaled Score","Scaled Score"
+  ];
+  var GRADE_KEYS = [
+    "Overall Grade","District Grade","GRADE","RATING","Letter Grade",
+    "LETTER_GRADE","OVERALL_GRADE","Accountability Rating"
+  ];
+
+  // numeric score from row
+  var __raw = toNumSafe(pick.apply(null, [row, hdr].concat(SCORE_KEYS)));
+  if (!Number.isNaN(__raw)) ribbonScore = Math.round(__raw);
+
+  // letter grade from row
+  var __g = pick.apply(null, [row, hdr].concat(GRADE_KEYS));
+  if (__g) ribbonGrade = String(__g).trim().toUpperCase();
+
+  // fallback: average campus scores when district row lacks a score
+  if (!Number.isFinite(ribbonScore) && Array.isArray(campuses)) {
+    var __scores = campuses.map(function(c){ return Number(c && c.score); })
+                           .filter(function(n){ return Number.isFinite(n); });
+    if (__scores.length) ribbonScore = Math.round(__scores.reduce(function(a,b){ return a+b; }, 0) / __scores.length);
+  }
+
+  // derive letter from score if still missing
+  if (!ribbonGrade && Number.isFinite(ribbonScore)) ribbonGrade = gradeFromScore(ribbonScore);
+
+  // last-resort label
+  var __displayGrade = ribbonGrade || "Unrated";
+  /* END LSL:RIBBON VARS */
 
   return (
     <div className="space-y-6">
@@ -181,6 +234,24 @@ export default function DistrictDetail() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
+            <div data-testid="district-grade-wrapper" className="mt-2">
+              <span
+                data-testid="district-grade"
+                className={
+                  "inline-flex items-center gap-3 rounded-2xl px-4 py-1.5 text-white shadow ring-1 ring-black/10 " +
+                  gradeColorClass(__displayGrade)
+                }
+                title={
+                  "TEA rating " + __displayGrade +
+                  (Number.isFinite(ribbonScore) ? " · score " + ribbonScore : "")
+                }
+              >
+                <span className="text-2xl font-extrabold leading-none">{__displayGrade}</span>
+                {Number.isFinite(ribbonScore) ? (
+                  <span className="ml-2 text-xl font-semibold leading-none">{ribbonScore}</span>
+                ) : null}
+              </span>
+            </div>
             <p className="text-gray-600 mt-1">{county}</p>
           </div>
 
@@ -215,7 +286,7 @@ export default function DistrictDetail() {
           className="border rounded-xl px-3 py-2 w-full md:w-96"
           placeholder="Search campus name or ID"
           value={campSearch}
-          onChange={(e) => setCampSearch(e.target.value)}
+          onChange={function (e) { setCampSearch(e.target.value); }}
         />
 
         <div className="overflow-x-auto mt-4">
@@ -240,7 +311,7 @@ export default function DistrictDetail() {
                   </td>
                 </tr>
               ) : (
-                campusesSorted.map((c, i) => {
+                campusesSorted.map(function (c, i) {
                   const f = campFields;
                   const r = c.raw;
                   const grade = f.CAMPUS_GRADE ? r[f.CAMPUS_GRADE] : "—";
@@ -249,7 +320,7 @@ export default function DistrictDetail() {
                   const tcnt = f.TEACHER_COUNT ? r[f.TEACHER_COUNT] : "—";
                   const acnt = f.ADMIN_COUNT ? r[f.ADMIN_COUNT] : "—";
                   return (
-                    <tr key={`${c.id}-${i}`} className="border-b last:border-0">
+                    <tr key={c.id + "-" + i} className="border-b last:border-0">
                       <td className="py-2 pr-3 font-medium">{c.name}</td>
                       <td className="py-2 pr-3 text-gray-600">{c.id}</td>
                       <td className="py-2 pr-3">{Number.isNaN(c.score) ? "—" : num.format(c.score)}</td>
