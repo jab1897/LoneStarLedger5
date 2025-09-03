@@ -8,6 +8,35 @@ import { loadDistrictsCSV } from "../lib/data";
 import { getCampusesForDistrict } from "../lib/campuses";
 import { gradeFromScore, gradeColorClass, toPct } from "../lib/ribbon";
 
+/** Compute district grade/score; fall back to campus average if district row missing. */
+function computeRibbon(row, hdr, campuses) {
+  // Score aliases
+  var scoreAliases = [
+    "Overall Score","District Score","SCORE","Overall Rating","RATING SCORE",
+    "OVR_SCORE","OVR SCORE","OVERALL","OVERALL_SCORE","SCORE_OVERALL",
+    "Overall Scaled Score","Scaled Score"
+  ];
+  // Grade aliases
+  var gradeAliases = [
+    "Overall Grade","District Grade","GRADE","RATING","Letter Grade","LETTER_GRADE","OVERALL_GRADE","Accountability Rating"
+  ];
+  // pull numeric score
+  var raw = toNumSafe(pick.apply(null, [row, hdr].concat(scoreAliases)));
+  var score = Number.isNaN(raw) ? NaN : Math.round(raw);
+  // pull letter grade
+  var g = pick.apply(null, [row, hdr].concat(gradeAliases));
+  var grade = g ? String(g).trim().toUpperCase() : null;
+
+  // fallback to campus average
+  if (!Number.isFinite(score) && Array.isArray(campuses)) {
+    var nums = campuses.map(function(c){ return Number(c && c.score); }).filter(function(n){ return Number.isFinite(n); });
+    if (nums.length) score = Math.round(nums.reduce(function(a,b){ return a + b; }, 0) / nums.length);
+  }
+
+  if (!grade && Number.isFinite(score)) grade = gradeFromScore(score);
+  return { grade: grade, score: score };
+}
+
 function gradeColorClass(g) {
   var t = String(g == null ? "" : g).toUpperCase();
   if (t === "A") return "bg-green-800";
@@ -169,6 +198,12 @@ if (!Number.isFinite(ribbonScore) && Array.isArray(campuses)) {
 // Derive letter if missing
 if (!ribbonGrade && Number.isFinite(ribbonScore)) ribbonGrade = gradeFromScore(ribbonScore);
 // --- end inline ribbon compute ---
+
+/* LSL:RIBBON VARS */
+var __rb = computeRibbon(row, hdr, campuses);
+var ribbonGrade = __rb.grade;
+var ribbonScore = __rb.score;
+/* END LSL:RIBBON VARS */
 return () => {
       alive = false;
     };
@@ -268,6 +303,17 @@ return () => {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
+<div data-testid="district-grade-wrapper" className="mt-2">
+  <span
+    data-testid="district-grade"
+    className={"inline-flex items-center gap-3 rounded-2xl px-4 py-1.5 text-white shadow ring-1 ring-black/10 " + gradeColorClass(ribbonGrade || "Unrated")}
+    title={"TEA rating " + (ribbonGrade || "Unrated") + (Number.isFinite(ribbonScore) ? " · score " + ribbonScore : "")}
+  >
+    <span className="text-2xl font-extrabold leading-none">{ribbonGrade || "Unrated"}</span>
+    {Number.isFinite(ribbonScore) ? <span className="ml-2 text-xl font-semibold leading-none">{ribbonScore}</span> : null}
+  </span>
+</div>
+
             {(ribbonGrade || !Number.isNaN(ribbonScore)) ? (
               <div className="mt-2">
                 <span
