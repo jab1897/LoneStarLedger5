@@ -6,17 +6,8 @@ import { usd, num } from "../lib/format";
 import LeafMap from "../ui/Map";
 import { loadDistrictsCSV } from "../lib/data";
 import { getCampusesForDistrict } from "../lib/campuses";
+import { gradeFromScore, gradeColorClass, toPct } from "../lib/ribbon";
 
-/* === LSL ribbon helpers (stable, single copy) === */
-function gradeFromScore(s) {
-  var n = Number(String(s == null ? "" : s).replace(/[^0-9.\-]/g, ""));
-  if (!Number.isFinite(n)) return null;
-  if (n >= 90) return "A";
-  if (n >= 80) return "B";
-  if (n >= 70) return "C";
-  if (n >= 60) return "D";
-  return "F";
-}
 function gradeColorClass(g) {
   var t = String(g == null ? "" : g).toUpperCase();
   if (t === "A") return "bg-green-800";
@@ -25,15 +16,6 @@ function gradeColorClass(g) {
   if (t === "D") return "bg-orange-700";
   if (t === "F") return "bg-red-800";
   return "bg-gray-700";
-}
-function toPct(v, digits) {
-  if (digits === void 0) digits = 1;
-  if (v == null || v === "") return "—";
-  var n = Number(String(v).replace(/[^0-9.\-]/g, ""));
-  if (!Number.isFinite(n)) return "—";
-  var clamped = Math.max(0, Math.min(1, n));
-  return (clamped * 100).toFixed(digits) + "%";
-}
 /* === end LSL ribbon helpers === */
 
 function gradeColorClass(g) {
