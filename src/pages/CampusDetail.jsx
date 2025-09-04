@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchCSV, fetchJSON } from "../lib/staticData";
 import StatPill from "../ui/StatPill";
 import LeafMap from "../ui/Map";
+import { toPct } from "../lib/ribbon";
 
 // Use your env vars with safe fallbacks
 const CAMPUSES_CSV =
@@ -237,12 +238,16 @@ export default function CampusDetail() {
         {error && <div className="text-red-700">{error}</div>}
         {!loading && !error && row && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            {Object.entries(row).map(([k, v]) => (
-              <div key={k} className="bg-gray-50 border rounded-xl px-3 py-2">
-                <div className="text-gray-600">{k}</div>
-                <div className="font-medium break-words">{String(v)}</div>
-              </div>
-            ))}
+            {Object.entries(row).map(([k, v]) => {
+              const nk = norm(k);
+              const isOGL = nk === "readingogl" || nk === "mathogl";
+              return (
+                <div key={k} className="bg-gray-50 border rounded-xl px-3 py-2">
+                  <div className="text-gray-600">{k}</div>
+                  <div className={"font-medium break-words" + (isOGL ? " text-right" : "")}>{isOGL ? toPct(v) : String(v)}</div>
+                </div>
+              );
+            })}
           </div>
         )}
         {!loading && !error && !row && (

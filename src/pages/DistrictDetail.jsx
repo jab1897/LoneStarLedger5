@@ -298,8 +298,8 @@ export default function DistrictDetail() {
                 <th className="py-2 pr-3">ID</th>
                 <th className="py-2 pr-3">Score</th>
                 <th className="py-2 pr-3">Grade</th>
-                <th className="py-2 pr-3">Reading OGL</th>
-                <th className="py-2 pr-3">Math OGL</th>
+                <th className="py-2 pr-3 text-right">Reading OGL</th>
+                <th className="py-2 pr-3 text-right">Math OGL</th>
                 <th className="py-2 pr-3 text-right">Teachers</th>
                 <th className="py-2 pr-3 text-right">Admins</th>
               </tr>
@@ -315,9 +315,9 @@ export default function DistrictDetail() {
                 campusesSorted.map(function (c, i) {
                   const f = campFields;
                   const r = c.raw;
-                  const grade = f.CAMPUS_GRADE ? r[f.CAMPUS_GRADE] : "—";
-                  const read = f.READING_OGR ? r[f.READING_OGR] : "—";
-                  const math = f.MATH_OGR ? r[f.MATH_OGR] : "—";
+                  const grade = f.CAMPUS_GRADE ? r[f.CAMPUS_GRADE] : null;
+                  const read = f.READING_OGR ? r[f.READING_OGR] : null;
+                  const math = f.MATH_OGR ? r[f.MATH_OGR] : null;
                   const tcnt = f.TEACHER_COUNT ? r[f.TEACHER_COUNT] : "—";
                   const acnt = f.ADMIN_COUNT ? r[f.ADMIN_COUNT] : "—";
                   return (
@@ -326,8 +326,8 @@ export default function DistrictDetail() {
                       <td className="py-2 pr-3 text-gray-600">{c.id}</td>
                       <td className="py-2 pr-3">{Number.isNaN(c.score) ? "—" : num.format(c.score)}</td>
                       <td className="py-2 pr-3">{grade ?? "—"}</td>
-                      <td className="py-2 pr-3">{read ?? "—"}</td>
-                      <td className="py-2 pr-3">{math ?? "—"}</td>
+                      <td className="py-2 pr-3 text-right">{toPct(read)}</td>
+                      <td className="py-2 pr-3 text-right">{toPct(math)}</td>
                       <td className="py-2 pr-3 text-right">{tcnt ?? "—"}</td>
                       <td className="py-2 pr-3 text-right">{acnt ?? "—"}</td>
                     </tr>
