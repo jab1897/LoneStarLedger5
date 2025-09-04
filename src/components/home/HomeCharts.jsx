@@ -45,10 +45,10 @@ function Select({ value, onChange, options }) {
 
 /* 1) Highest-Paid Superintendents (table, top 15 by FTE salary) */
 export function HighestPaidSuperintendents() {
-  const [data, setData] = useState({ tried: [], okPath: null, rows: [] });
+  const [data, setData] = useState({ rows: [], error: null });
   useEffect(function() {
     loadSuperintendents().then(setData).catch(function() {
-      setData({ tried: [], okPath: null, rows: [] });
+      setData({ rows: [], error: "File not found at /data/home/superintendents.csv" });
     });
   }, []);
 
@@ -64,8 +64,9 @@ export function HighestPaidSuperintendents() {
 
       {top.length === 0 ? (
         <div className="text-sm text-gray-600 space-y-2">
-          <div><strong>File not found.</strong> Please upload <code>superintendents.csv</code> to <code>data/home/</code>.</div>
-          <div className="text-gray-500">Tried paths: {data.tried.map(function(p,i){ return <code key={i} className="mr-1">{p}</code>; })}</div>
+          <div>{data.error || (
+            <span>Upload <code>public/data/home/superintendents.csv</code>.</span>
+          )}</div>
           <div className="text-gray-500">Required columns: <code>DISTRICT_N</code>, <code>DISTRICT_NAME</code>, <code>SUPERINTENDENT_NAME</code>, <code>FTE_SALARY</code>, <code>ENROLLMENT</code></div>
         </div>
       ) : (
@@ -109,11 +110,11 @@ function EnrollmentFilter({ value, onChange }) {
 
 /* 2) Most Indebted Districts (top 15 by debt; filter by enrollment) */
 export function MostIndebtedDistricts() {
-  const [data, setData] = useState({ tried: [], okPath: null, rows: [] });
+  const [data, setData] = useState({ rows: [], error: null });
   const [bucket, setBucket] = useState("all");
   useEffect(function() {
     loadIndebted().then(setData).catch(function() {
-      setData({ tried: [], okPath: null, rows: [] });
+      setData({ rows: [], error: "File not found at /data/home/indebted.csv" });
     });
   }, []);
 
@@ -136,8 +137,9 @@ export function MostIndebtedDistricts() {
       <div className="flex flex-col gap-2">
         {top.length === 0 && (
           <div className="text-sm text-gray-600 space-y-2">
-            <div><strong>File not found.</strong> Please upload <code>indebted.csv</code> to <code>data/home/</code>.</div>
-            <div className="text-gray-500">Tried paths: {data.tried.map(function(p,i){ return <code key={i} className="mr-1">{p}</code>; })}</div>
+            <div>{data.error || (
+              <span>Upload <code>public/data/home/indebted.csv</code>.</span>
+            )}</div>
           </div>
         )}
         {top.map(function(r){
@@ -158,11 +160,11 @@ export function MostIndebtedDistricts() {
 
 /* 3) Worst Performing Districts (bottom 15 by score; filter by enrollment) */
 export function WorstPerformingDistricts() {
-  const [data, setData] = useState({ tried: [], okPath: null, rows: [] });
+  const [data, setData] = useState({ rows: [], error: null });
   const [bucket, setBucket] = useState("all");
   useEffect(function(){
     loadPerformance().then(setData).catch(function(){
-      setData({ tried: [], okPath: null, rows: [] });
+      setData({ rows: [], error: "File not found at /data/home/performance.csv" });
     });
   }, []);
 
@@ -180,8 +182,9 @@ export function WorstPerformingDistricts() {
       <div className="flex flex-col gap-2">
         {bottom.length === 0 && (
           <div className="text-sm text-gray-600 space-y-2">
-            <div><strong>File not found.</strong> Please upload <code>performance.csv</code> to <code>data/home/</code>.</div>
-            <div className="text-gray-500">Tried paths: {data.tried.map(function(p,i){ return <code key={i} className="mr-1">{p}</code>; })}</div>
+            <div>{data.error || (
+              <span>Upload <code>public/data/home/performance.csv</code>.</span>
+            )}</div>
           </div>
         )}
         {bottom.map(function(r){
