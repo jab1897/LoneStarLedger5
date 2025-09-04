@@ -207,10 +207,25 @@ export default function DistrictDetail() {
   if (__g) ribbonGrade = String(__g).trim().toUpperCase();
 
   // fallback: average campus scores when district row lacks a score
-  if (!Number.isFinite(ribbonScore) && Array.isArray(campuses)) {
-    var __scores = campuses.map(function(c){ return Number(c && c.score); })
-                           .filter(function(n){ return Number.isFinite(n); });
-    if (__scores.length) ribbonScore = Math.round(__scores.reduce(function(a,b){ return a+b; }, 0) / __scores.length);
+  if (
+    !Number.isFinite(ribbonScore) &&
+    Array.isArray(campuses) &&
+    campFields &&
+    campFields.CAMPUS_SCORE
+  ) {
+    var __scores = campuses
+      .map(function (c) {
+        return toNumSafe(c[campFields.CAMPUS_SCORE]);
+      })
+      .filter(function (n) {
+        return Number.isFinite(n);
+      });
+    if (__scores.length)
+      ribbonScore = Math.round(
+        __scores.reduce(function (a, b) {
+          return a + b;
+        }, 0) / __scores.length
+      );
   }
 
   // derive letter from score if still missing
