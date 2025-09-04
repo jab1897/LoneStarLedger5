@@ -1,116 +1,154 @@
-// Lightweight CSV loaders & mappers for homepage cards (no new deps)
+// Lightweight CSV loaders & mappers for homepage cards (no deps)
 
-// numeric helper
-const _num = function(v) {
-  const n = Number(String(v == null ? "" : v).replace(/[^0-9.\-]/g, ""));
-  return Number.isFinite(n) ? n : NaN;
-};
+// ===== utils =====
+function stripBOM(t) { return t && t.charCodeAt(0) === 0xFEFF ? t.slice(1) : t; }
 
-// naive CSV parser
-function _parseCSV(text) {
+// Quote-aware CSV parser (handles commas in quotes and "" escapes)
+export function parseCSV(text) {
   if (!text) return { headers: [], rows: [] };
-  const lines = text.replace(/\r/g, "").split("\n").filter(Boolean);
+  const s = stripBOM(String(text)).replace(/\r/g, "");
+  const lines = s.split("\n").filter(function(l){ return l.trim().length > 0; });
+
+  function splitCSV(line) {
+    var out = [];
+    var cur = "";
+    var i = 0;
+    var inQ = false;
+    while (i < line.length) {
+      var ch = line[i];
+      if (inQ) {
+        if (ch === '"') {
+          if (i + 1 < line.length && line[i + 1] === '"') { cur += '"'; i += 2; continue; }
+          inQ = false; i++; continue;
+        }
+        cur += ch; i++; continue;
+      } else {
+        if (ch === '"') { inQ = true; i++; continue; }
+        if (ch === ',') { out.push(cur.trim()); cur = ""; i++; continue; }
+        cur += ch; i++; continue;
+      }
+    }
+    out.push(cur.trim());
+    return out;
+  }
+
   if (!lines.length) return { headers: [], rows: [] };
-  const headers = lines[0].split(",").map(function(h){ return h.trim(); });
+  const headers = splitCSV(lines[0]).map(function(h){ return h.trim(); });
   const rows = lines.slice(1).map(function(line){
-    const cells = line.split(",");
+    const cells = splitCSV(line);
     const obj = {};
-    headers.forEach(function(h, i){ obj[h] = (cells[i] == null ? "" : cells[i]).trim(); });
+    headers.forEach(function(h, idx){ obj[h] = (cells[idx] == null ? "" : cells[idx]).trim(); });
     return obj;
   });
   return { headers: headers, rows: rows };
 }
 
-const _firstKey = function(obj, keys) {
+function toNum(v) {
+  const n = Number(String(v == null ? "" : v).replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : NaN;
+}
+
+function firstKey(obj, keys) {
   for (var i = 0; i < keys.length; i++) {
     var k = keys[i];
     if (obj[k] != null && obj[k] !== "") return k;
   }
   return null;
-};
+}
 
-// ---------- LOADERS ----------
+async function fetchCSV(path) {
+  try {
+    const res = await fetch(path, { cache: "no-cache" });
+    if (!res.ok) return { ok: false, path: path, text: null, bytes: 0 };
+    const text = await res.text();
+    return { ok: true, path: path, text: text, bytes: text.length };
+  } catch (e) {
+    return { ok: false, path: path, text: null, bytes: 0 };
+  }
+}
 
-// SUPERINTENDENTS
+// ===== loaders =====
 export async function loadSuperintendents() {
-  try {
-    const res = await fetch("/data/home/superintendents.csv", { cache: "no-cache" });
-    if (!res.ok) {
-      return { rows: [], error: "File not found at /data/home/superintendents.csv" };
-    }
-    const text = await res.text();
-    const parsed = _parseCSV(text);
-    const mapped = parsed.rows.map(function(r){
-      const idKey = _firstKey(r, ["DISTRICT_N","DISTRICT_ID","DISTRICT_NUMBER"]);
-      const nameKey = _firstKey(r, ["DISTRICT_NAME","NAME","DNAME"]);
-      const supKey = _firstKey(r, ["SUPERINTENDENT_NAME","SUPT_NAME","SUPERINTENDENT"]);
-      const salKey = _firstKey(r, ["FTE_SALARY","SUPERINTENDENT_SALARY","SUPT_SALARY","BASE_FTE_SALARY"]);
-      const enrKey = _firstKey(r, ["ENROLLMENT","ENR","STUDENTS"]);
+  const f = await fetchCSV("/data/home/superintendents.csv");
+  if (!f.ok) return { rows: [], headers: [], error: "File not found at " + f.path };
 
-      var id = r[idKey];
-      var name = r[nameKey];
-      var supName = r[supKey] == null ? "" : r[supKey];
-      var fteSalary = _num(r[salKey]);
-      var enroll = _num(r[enrKey]);
-      return { id: id, name: name, supName: supName, fteSalary: fteSalary, enroll: enroll };
-    }).filter(function(d){ return d && d.id && d.name && Number.isFinite(d.fteSalary); });
+  const parsed = parseCSV(f.text);
+  const rows = parsed.rows.map(function(r){
+    const idKey   = firstKey(r, ["DISTRICT_N","DISTRICT_ID","DISTRICT_NUMBER"]);
+    const nameKey = firstKey(r, ["DISTRICT_NAME","NAME","DNAME"]);
+    const supKey  = firstKey(r, ["SUPERINTENDENT_NAME","SUPT_NAME","SUPERINTENDENT"]);
+    const salKey  = firstKey(r, ["FTE_SALARY","SUPERINTENDENT_SALARY","SUPT_SALARY","BASE_FTE_SALARY"]);
+    const enrKey  = firstKey(r, ["ENROLLMENT","ENR","STUDENTS"]);
+    var id = r[idKey];
+    var name = r[nameKey];
+    return {
+      id: id,
+      name: name,
+      supName: r[supKey] == null ? "" : r[supKey],
+      fteSalary: toNum(r[salKey]),
+      enroll: toNum(r[enrKey])
+    };
+  }).filter(function(d){ return d.id && d.name && Number.isFinite(d.fteSalary); });
 
-    return { rows: mapped, error: null };
-  } catch (e) {
-    return { rows: [], error: "File not found at /data/home/superintendents.csv" };
+  if (import.meta && import.meta.env && import.meta.env.DEV) {
+    console.info("[home:superintendents] path:", f.path, "bytes:", f.bytes);
+    console.info("[home:superintendents] headers:", parsed.headers);
+    console.info("[home:superintendents] first row:", parsed.rows[0]);
+    console.info("[home:superintendents] mapped rows:", rows.length);
   }
+  return { rows: rows, headers: parsed.headers, error: rows.length ? null : "No mapped rows" };
 }
 
-// INDEBTED
 export async function loadIndebted() {
-  try {
-    const res = await fetch("/data/home/indebted.csv", { cache: "no-cache" });
-    if (!res.ok) {
-      return { rows: [], error: "File not found at /data/home/indebted.csv" };
-    }
-    const text = await res.text();
-    const parsed = _parseCSV(text);
-    const mapped = parsed.rows.map(function(r){
-      var id = r.DISTRICT_N || r.DISTRICT_ID || r.DISTRICT_NUMBER;
-      var name = r.DISTRICT_NAME || r.NAME || r.DNAME || "";
-      var enroll = _num(r.ENROLLMENT || r.ENR || r.STUDENTS);
-      var debt = _num(r.DEBT_PER_STUDENT) || _num(r.TOTAL_DEBT) || _num(r.DEBT) || _num(r.DEBT_TOTAL);
-      return { id: id, name: name, enroll: enroll, debt: debt };
-    }).filter(function(d){ return d.id && d.name && Number.isFinite(d.debt); });
-    return { rows: mapped, error: null };
-  } catch (e) {
-    return { rows: [], error: "File not found at /data/home/indebted.csv" };
+  const f = await fetchCSV("/data/home/indebted.csv");
+  if (!f.ok) return { rows: [], headers: [], error: "File not found at " + f.path };
+
+  const parsed = parseCSV(f.text);
+  const rows = parsed.rows.map(function(r){
+    var id = r.DISTRICT_N || r.DISTRICT_ID || r.DISTRICT_NUMBER;
+    var name = r.DISTRICT_NAME || r.NAME || r.DNAME || "";
+    var enroll = toNum(r.ENROLLMENT || r.ENR || r.STUDENTS);
+    var debt = toNum(r.DEBT_PER_STUDENT) || toNum(r.TOTAL_DEBT) || toNum(r.DEBT) || toNum(r.DEBT_TOTAL);
+    return { id: id, name: name, debt: debt, enroll: enroll };
+  }).filter(function(d){ return d.id && d.name && Number.isFinite(d.debt); });
+
+  if (import.meta && import.meta.env && import.meta.env.DEV) {
+    console.info("[home:indebted] path:", f.path, "bytes:", f.bytes);
+    console.info("[home:indebted] headers:", parsed.headers);
+    console.info("[home:indebted] first row:", parsed.rows[0]);
+    console.info("[home:indebted] mapped rows:", rows.length);
   }
+  return { rows: rows, headers: parsed.headers, error: rows.length ? null : "No mapped rows" };
 }
 
-// PERFORMANCE
 export async function loadPerformance() {
-  try {
-    const res = await fetch("/data/home/performance.csv", { cache: "no-cache" });
-    if (!res.ok) {
-      return { rows: [], error: "File not found at /data/home/performance.csv" };
+  const f = await fetchCSV("/data/home/performance.csv");
+  if (!f.ok) return { rows: [], headers: [], error: "File not found at " + f.path };
+
+  const parsed = parseCSV(f.text);
+  const rows = parsed.rows.map(function(r){
+    var id = r.DISTRICT_N || r.DISTRICT_ID || r.DISTRICT_NUMBER;
+    var name = r.DISTRICT_NAME || r.NAME || r.DNAME || "";
+    var enroll = toNum(r.ENROLLMENT || r.ENR || r.STUDENTS);
+    var score = toNum(r.OVERALL_SCORE || r.SCORE || r.ACCOUNTABILITY_SCORE);
+    if (!Number.isFinite(score)) {
+      var rating = String(r.OVERALL_RATING || r.RATING || "").toUpperCase();
+      var map = { A:95, B:85, C:75, D:65, F:55 };
+      score = map[rating] == null ? NaN : map[rating];
     }
-    const text = await res.text();
-    const parsed = _parseCSV(text);
-    const mapped = parsed.rows.map(function(r){
-      var id = r.DISTRICT_N || r.DISTRICT_ID || r.DISTRICT_NUMBER;
-      var name = r.DISTRICT_NAME || r.NAME || r.DNAME || "";
-      var enroll = _num(r.ENROLLMENT || r.ENR || r.STUDENTS);
-      var score = _num(r.OVERALL_SCORE || r.SCORE || r.ACCOUNTABILITY_SCORE);
-      if (!Number.isFinite(score)) {
-        var rating = String(r.OVERALL_RATING || r.RATING || "").toUpperCase();
-        var map = {A:95, B:85, C:75, D:65, F:55};
-        score = map[rating] == null ? NaN : map[rating];
-      }
-      return { id: id, name: name, enroll: enroll, score: score };
-    }).filter(function(d){ return d.id && d.name && Number.isFinite(d.score); });
-    return { rows: mapped, error: null };
-  } catch (e) {
-    return { rows: [], error: "File not found at /data/home/performance.csv" };
+    return { id: id, name: name, score: score, enroll: enroll };
+  }).filter(function(d){ return d.id && d.name && Number.isFinite(d.score); });
+
+  if (import.meta && import.meta.env && import.meta.env.DEV) {
+    console.info("[home:performance] path:", f.path, "bytes:", f.bytes);
+    console.info("[home:performance] headers:", parsed.headers);
+    console.info("[home:performance] first row:", parsed.rows[0]);
+    console.info("[home:performance] mapped rows:", rows.length);
   }
+  return { rows: rows, headers: parsed.headers, error: rows.length ? null : "No mapped rows" };
 }
 
-// enrollment buckets (unchanged)
+// enrollment buckets
 export const ENROLL_BUCKETS = [
   { key: "all",   label: "All sizes",   test: function(){ return true; } },
   { key: "lt1k",  label: "< 1,000",     test: function(n){ return n < 1000; } },
@@ -119,6 +157,5 @@ export const ENROLL_BUCKETS = [
   { key: "20k+",  label: "20,000+",     test: function(n){ return n >= 20000; } }
 ];
 
-export const usd0 = function(n){ return Number.isFinite(n) ? "$" + Math.round(n).toLocaleString() : "—"; };
-export const int0 = function(n){ return Number.isFinite(n) ? Math.round(n).toLocaleString() : "—"; };
-
+export function usd0(n) { return Number.isFinite(n) ? "$" + Math.round(n).toLocaleString() : "—"; }
+export function int0(n) { return Number.isFinite(n) ? Math.round(n).toLocaleString() : "—"; }

@@ -45,10 +45,10 @@ function Select({ value, onChange, options }) {
 
 /* 1) Highest-Paid Superintendents (table, top 15 by FTE salary) */
 export function HighestPaidSuperintendents() {
-  const [data, setData] = useState({ rows: [], error: null });
+  const [data, setData] = useState({ rows: [], headers: [], error: null });
   useEffect(function() {
     loadSuperintendents().then(setData).catch(function() {
-      setData({ rows: [], error: "File not found at /data/home/superintendents.csv" });
+      setData({ rows: [], headers: [], error: "Load error" });
     });
   }, []);
 
@@ -64,10 +64,12 @@ export function HighestPaidSuperintendents() {
 
       {top.length === 0 ? (
         <div className="text-sm text-gray-600 space-y-2">
-          <div>{data.error || (
-            <span>Upload <code>public/data/home/superintendents.csv</code>.</span>
-          )}</div>
-          <div className="text-gray-500">Required columns: <code>DISTRICT_N</code>, <code>DISTRICT_NAME</code>, <code>SUPERINTENDENT_NAME</code>, <code>FTE_SALARY</code>, <code>ENROLLMENT</code></div>
+          <div><strong>No data found</strong> for <code>/public/data/home/superintendents.csv</code> (served at <code>/data/home/superintendents.csv</code>).</div>
+          {data.error && <div className="text-gray-500">{data.error}</div>}
+          {data.headers && data.headers.length ? (
+            <div className="text-gray-500">Detected headers: {data.headers.map(function(h,i){ return <code key={i} className="mr-1">{h}</code>; })}</div>
+          ) : null}
+          <div className="text-gray-500">Required headers: <code>DISTRICT_N</code>, <code>DISTRICT_NAME</code>, <code>SUPERINTENDENT_NAME</code>, <code>FTE_SALARY</code>, <code>ENROLLMENT</code></div>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -110,11 +112,11 @@ function EnrollmentFilter({ value, onChange }) {
 
 /* 2) Most Indebted Districts (top 15 by debt; filter by enrollment) */
 export function MostIndebtedDistricts() {
-  const [data, setData] = useState({ rows: [], error: null });
+  const [data, setData] = useState({ rows: [], headers: [], error: null });
   const [bucket, setBucket] = useState("all");
   useEffect(function() {
     loadIndebted().then(setData).catch(function() {
-      setData({ rows: [], error: "File not found at /data/home/indebted.csv" });
+      setData({ rows: [], headers: [], error: "Load error" });
     });
   }, []);
 
@@ -137,9 +139,12 @@ export function MostIndebtedDistricts() {
       <div className="flex flex-col gap-2">
         {top.length === 0 && (
           <div className="text-sm text-gray-600 space-y-2">
-            <div>{data.error || (
-              <span>Upload <code>public/data/home/indebted.csv</code>.</span>
-            )}</div>
+            <div><strong>No data found</strong> for <code>/public/data/home/indebted.csv</code> (served at <code>/data/home/indebted.csv</code>).</div>
+            {data.error && <div className="text-gray-500">{data.error}</div>}
+            {data.headers && data.headers.length ? (
+              <div className="text-gray-500">Detected headers: {data.headers.map(function(h,i){ return <code key={i} className="mr-1">{h}</code>; })}</div>
+            ) : null}
+            <div className="text-gray-500">Required headers: <code>DISTRICT_N</code>, <code>DISTRICT_NAME</code>, <code>DEBT_PER_STUDENT</code> or <code>TOTAL_DEBT</code>, <code>ENROLLMENT</code></div>
           </div>
         )}
         {top.map(function(r){
@@ -160,11 +165,11 @@ export function MostIndebtedDistricts() {
 
 /* 3) Worst Performing Districts (bottom 15 by score; filter by enrollment) */
 export function WorstPerformingDistricts() {
-  const [data, setData] = useState({ rows: [], error: null });
+  const [data, setData] = useState({ rows: [], headers: [], error: null });
   const [bucket, setBucket] = useState("all");
   useEffect(function(){
     loadPerformance().then(setData).catch(function(){
-      setData({ rows: [], error: "File not found at /data/home/performance.csv" });
+      setData({ rows: [], headers: [], error: "Load error" });
     });
   }, []);
 
@@ -182,9 +187,12 @@ export function WorstPerformingDistricts() {
       <div className="flex flex-col gap-2">
         {bottom.length === 0 && (
           <div className="text-sm text-gray-600 space-y-2">
-            <div>{data.error || (
-              <span>Upload <code>public/data/home/performance.csv</code>.</span>
-            )}</div>
+            <div><strong>No data found</strong> for <code>/public/data/home/performance.csv</code> (served at <code>/data/home/performance.csv</code>).</div>
+            {data.error && <div className="text-gray-500">{data.error}</div>}
+            {data.headers && data.headers.length ? (
+              <div className="text-gray-500">Detected headers: {data.headers.map(function(h,i){ return <code key={i} className="mr-1">{h}</code>; })}</div>
+            ) : null}
+            <div className="text-gray-500">Required headers: <code>DISTRICT_N</code>, <code>DISTRICT_NAME</code>, <code>OVERALL_SCORE</code> or <code>OVERALL_RATING</code>, <code>ENROLLMENT</code></div>
           </div>
         )}
         {bottom.map(function(r){
