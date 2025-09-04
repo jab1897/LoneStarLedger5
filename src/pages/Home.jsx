@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import StatCard from "../ui/StatCard";
-import EntityCard from "../ui/EntityCard";
 import DataTable from "../ui/DataTable";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
 import { fetchCSV } from "../lib/staticData";
@@ -43,6 +42,9 @@ export default function Home() {
   const [indebted, setIndebted] = useState([]);
   const [performance, setPerformance] = useState([]);
   const [superintendents, setSuperintendents] = useState([]);
+  const [userLoc, setUserLoc] = useState(null); // { lat, lng }
+  const [geoMsg, setGeoMsg] = useState(null); // string | null
+  const [geoBusy, setGeoBusy] = useState(false);
 
   // Statewide KPIs
   useEffect(() => {
@@ -61,6 +63,33 @@ export default function Home() {
       }
     })();
   }, []);
+
+  // Request browser geolocation on demand
+  const requestLocation = () => {
+    if (!("geolocation" in navigator)) {
+      setGeoMsg("Location services are not available in this browser.");
+      return;
+    }
+    setGeoBusy(true);
+    setGeoMsg(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords || {};
+        if (typeof latitude === "number" && typeof longitude === "number") {
+          setUserLoc({ lat: latitude, lng: longitude });
+          setGeoMsg(null);
+        } else {
+          setGeoMsg("Could not read your device location.");
+        }
+        setGeoBusy(false);
+      },
+      (err) => {
+        setGeoMsg(err?.message || "Location permission was denied.");
+        setGeoBusy(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   // Home tables (CSV-backed)
   useEffect(() => {
@@ -237,7 +266,25 @@ export default function Home() {
         </div>
       </section>
 
-      <TexasMap />
+      {/* Map + geolocation control */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Center the map on your current location (Texas only).
+          </div>
+          <button
+            onClick={requestLocation}
+            disabled={geoBusy}
+            className={`px-3 py-1.5 rounded-md border text-sm ${
+              geoBusy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
+            }`}
+          >
+            {geoBusy ? "Locating…" : "Use my location"}
+          </button>
+        </div>
+        {geoMsg && <div className="text-xs text-gray-500">{geoMsg}</div>}
+        <TexasMap userLocation={userLoc} userZoom={12} />
+      </section>
 
       {/* Home tables */}
       <section className="space-y-8">
@@ -267,35 +314,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Recently viewed */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Recently viewed</h2>
-          <Link to="/districts" className="text-sm text-blue-700 hover:underline">
-            See all
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <EntityCard
-            title="Austin ISD"
-            subtitle="Travis County"
-            tags={["Large", "Urban"]}
-            to="/district/227901"
-          />
-          <EntityCard
-            title="Northside ISD"
-            subtitle="Bexar County"
-            tags={["Large", "Urban"]}
-            to="/district/015915"
-          />
-          <EntityCard
-            title="Sharyland ISD"
-            subtitle="Hidalgo County"
-            tags={["Mid", "Suburban"]}
-            to="/district/108911"
-          />
-        </div>
-      </section>
+      {/* Recently viewed removed by request */}
     </div>
   );
 }
