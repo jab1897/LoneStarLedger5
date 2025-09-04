@@ -4,6 +4,11 @@ import StatCard from "../ui/StatCard";
 import EntityCard from "../ui/EntityCard";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
 import TexasMap from "../components/TexasMap";
+import {
+  HighestPaidSuperintendents,
+  MostIndebtedDistricts,
+  WorstPerformingDistricts
+} from "../components/home/HomeCharts";
 
 const fmtInt = (n) =>
   typeof n === "number" && !Number.isNaN(n)
@@ -63,6 +68,12 @@ export default function Home() {
 
       {/* 👇 Add the map back here */}
       <TexasMap />
+
+      <section className="mt-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <HighestPaidSuperintendents />
+        <MostIndebtedDistricts />
+        <WorstPerformingDistricts />
+      </section>
 
       {/* Recently viewed */}
       <section className="space-y-4">

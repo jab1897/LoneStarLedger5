@@ -1,0 +1,141 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  loadSuperintendents,
+  loadIndebted,
+  loadPerformance,
+  ENROLL_BUCKETS,
+  usd0
+} from "../../lib/homeData";
+
+// Minimal horizontal bar using Tailwind only
+function HBar({ value, max, title }) {
+  const pct = max > 0 ? Math.max(0, (value / max) * 100) : 0;
+  return (
+    <div className="h-3 w-full bg-gray-200 rounded" title={title}>
+      <div className="h-3 bg-indigo-600 rounded" style={{ width: `${pct}%` }} />
+    </div>
+  );
+}
+
+function Card({ title, action, children }) {
+  return (
+    <div className="rounded-2xl border bg-white shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold">{title}</h3>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Select({ value, onChange, options }) {
+  return (
+    <select
+      className="border rounded px-2 py-1 text-sm"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {options.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+    </select>
+  );
+}
+
+/* 1) Highest-Paid Superintendents (top 15) */
+export function HighestPaidSuperintendents() {
+  const [rows, setRows] = useState([]);
+  useEffect(() => { loadSuperintendents().then(setRows).catch(() => setRows([])); }, []);
+  const top = useMemo(() => [...rows].sort((a,b)=>b.pay-a.pay).slice(0,15), [rows]);
+  const max = useMemo(() => top.reduce((m,r)=>Math.max(m,r.pay), 0), [top]);
+
+  return (
+    <Card title="Highest-Paid Superintendents">
+      <div className="flex flex-col gap-2">
+        {top.length === 0 && <div className="text-sm text-gray-500">Upload <code>public/data/home/superintendents.csv</code>.</div>}
+        {top.map(r => (
+          <div key={r.id} className="flex items-center gap-3">
+            <div className="w-56 shrink-0">
+              <Link className="text-indigo-700 hover:underline" to={`/district/${encodeURIComponent(r.id)}`}>{r.name}</Link>
+            </div>
+            <div className="grow"><HBar value={r.pay} max={max} title={usd0(r.pay)} /></div>
+            <div className="w-24 text-right text-sm tabular-nums">{usd0(r.pay)}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/* Shared enrollment filter */
+function EnrollmentFilter({ value, onChange }) {
+  return <Select value={value} onChange={onChange} options={ENROLL_BUCKETS} />;
+}
+
+/* 2) Most Indebted Districts (top 15 by debt; filter by enrollment) */
+export function MostIndebtedDistricts() {
+  const [rows, setRows] = useState([]);
+  const [bucket, setBucket] = useState("all");
+  useEffect(() => { loadIndebted().then(setRows).catch(() => setRows([])); }, []);
+
+  const filtered = useMemo(() => {
+    const test = ENROLL_BUCKETS.find(b => b.key === bucket)?.test ?? (()=>true);
+    return rows.filter(r => test(Number(r.enroll) || 0));
+  }, [rows, bucket]);
+
+  const withMetric = useMemo(() => filtered.map(r => ({ ...r, metric: Number(r.debt) }))
+    .filter(r => Number.isFinite(r.metric)), [filtered]);
+
+  const top = useMemo(() => [...withMetric].sort((a,b)=>b.metric-a.metric).slice(0,15), [withMetric]);
+  const max = useMemo(() => top.reduce((m,r)=>Math.max(m,r.metric), 0), [top]);
+
+  return (
+    <Card title="Most Indebted Districts" action={<EnrollmentFilter value={bucket} onChange={setBucket} />}>
+      <div className="flex flex-col gap-2">
+        {top.length === 0 && <div className="text-sm text-gray-500">Upload <code>public/data/home/indebted.csv</code>.</div>}
+        {top.map(r => (
+          <div key={r.id} className="flex items-center gap-3">
+            <div className="w-56 shrink-0">
+              <Link className="text-indigo-700 hover:underline" to={`/district/${encodeURIComponent(r.id)}`}>{r.name}</Link>
+            </div>
+            <div className="grow"><HBar value={r.metric} max={max} title={usd0(r.metric)} /></div>
+            <div className="w-28 text-right text-sm tabular-nums">{usd0(r.metric)}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+/* 3) Worst Performing Districts (bottom 15 by score; filter by enrollment) */
+export function WorstPerformingDistricts() {
+  const [rows, setRows] = useState([]);
+  const [bucket, setBucket] = useState("all");
+  useEffect(() => { loadPerformance().then(setRows).catch(() => setRows([])); }, []);
+
+  const filtered = useMemo(() => {
+    const test = ENROLL_BUCKETS.find(b => b.key === bucket)?.test ?? (()=>true);
+    return rows.filter(r => test(Number(r.enroll) || 0));
+  }, [rows, bucket]);
+
+  const bottom = useMemo(() => [...filtered].sort((a,b)=>a.score-b.score).slice(0,15), [filtered]);
+  const max = useMemo(() => bottom.reduce((m,r)=>Math.max(m,r.score), 0), [bottom]);
+
+  return (
+    <Card title="Worst Performing Districts" action={<EnrollmentFilter value={bucket} onChange={setBucket} />}>
+      <div className="flex flex-col gap-2">
+        {bottom.length === 0 && <div className="text-sm text-gray-500">Upload <code>public/data/home/performance.csv</code>.</div>}
+        {bottom.map(r => (
+          <div key={r.id} className="flex items-center gap-3">
+            <div className="w-56 shrink-0">
+              <Link className="text-indigo-700 hover:underline" to={`/district/${encodeURIComponent(r.id)}`}>{r.name}</Link>
+            </div>
+            <div className="grow"><HBar value={r.score} max={max || 100} title={String(Math.round(r.score))} /></div>
+            <div className="w-16 text-right text-sm tabular-nums">{Math.round(r.score)}</div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
