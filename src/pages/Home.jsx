@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import StatCard from "../ui/StatCard";
 import EntityCard from "../ui/EntityCard";
+import DataTable from "../ui/DataTable";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
+import { fetchCSV } from "../lib/staticData";
 import TexasMap from "../components/TexasMap";
 
 const fmtInt = (n) =>
@@ -19,15 +21,24 @@ const fmtMoney = (n) =>
       }).format(n)
     : "—";
 
+const toNumber = (v) => {
+  const n = Number(String(v).replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) ? n : NaN;
+};
+
 export default function Home() {
   const [stats, setStats] = useState(null);
+  const [indebted, setIndebted] = useState([]);
+  const [performance, setPerformance] = useState([]);
+  const [superintendents, setSuperintendents] = useState([]);
 
   useEffect(() => {
     (async () => {
       try {
+        const districtsCsv = "/data/Current_Districts_2025.csv";
         const [s, fields] = await Promise.all([
-          getStatewideStats(),
-          getDetectedFields(),
+          getStatewideStats(districtsCsv),
+          getDetectedFields(districtsCsv),
         ]);
         console.table(fields); // Inspect which headers were used
         setStats(s);
@@ -37,6 +48,119 @@ export default function Home() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [d, p, s] = await Promise.all([
+          fetchCSV("/data/home/indebted.csv"),
+          fetchCSV("/data/home/performance.csv"),
+          fetchCSV("/data/home/superintendents.csv"),
+        ]);
+        setIndebted(
+          d.filter((r) => r.NAME && r.DISTRICT_N && r.Debt).slice(0, 10)
+        );
+        setPerformance(
+          p
+            .filter((r) => r.NAME && r.DISTRICT_N && r.DISTRICT_SCORE)
+            .slice(0, 10)
+        );
+        setSuperintendents(
+          s
+            .filter(
+              (r) =>
+                r.DISTRICT_NAME && r.DISTRICT_N && r.FTE_SALARY && r.SUPERINTENDENT_NAME
+            )
+            .slice(0, 10)
+        );
+      } catch (e) {
+        console.error("Failed to load home tables:", e);
+        setIndebted([]);
+        setPerformance([]);
+        setSuperintendents([]);
+      }
+    })();
+  }, []);
+
+  const debtCols = [
+    {
+      key: "name",
+      label: "District",
+      format: (v, row) => (
+        <Link to={`/district/${row.id}`} className="text-indigo-700 hover:underline">
+          {v}
+        </Link>
+      ),
+    },
+    { key: "debt", label: "Debt", align: "right", format: (v) => fmtMoney(v) },
+    {
+      key: "perDebt",
+      label: "Per-Pupil Debt",
+      align: "right",
+      format: (v) => fmtMoney(v),
+    },
+  ];
+
+  const debtRows = indebted.map((r) => ({
+    id: r.DISTRICT_N,
+    name: r.NAME,
+    debt: toNumber(r.Debt),
+    perDebt: toNumber(r["Per-Pupil Debt"]),
+  }));
+
+  const perfCols = [
+    {
+      key: "name",
+      label: "District",
+      format: (v, row) => (
+        <Link to={`/district/${row.id}`} className="text-indigo-700 hover:underline">
+          {v}
+        </Link>
+      ),
+    },
+    { key: "grade", label: "Grade" },
+    { key: "score", label: "Score", align: "right" },
+  ];
+
+  const perfRows = performance.map((r) => ({
+    id: r.DISTRICT_N,
+    name: r.NAME,
+    grade: r.DISTRICT_GRADE,
+    score: toNumber(r.DISTRICT_SCORE),
+  }));
+
+  const supCols = [
+    {
+      key: "district",
+      label: "District",
+      format: (v, row) => (
+        <Link to={`/district/${row.id}`} className="text-indigo-700 hover:underline">
+          {v}
+        </Link>
+      ),
+    },
+    { key: "superintendent", label: "Superintendent" },
+    {
+      key: "salary",
+      label: "Salary",
+      align: "right",
+      format: (v) => fmtMoney(v),
+    },
+    {
+      key: "enrollment",
+      label: "Enrollment",
+      align: "right",
+      format: (v) => fmtInt(v),
+    },
+  ];
+
+  const supRows = superintendents.map((r) => ({
+    id: r.DISTRICT_N,
+    district: r.DISTRICT_NAME,
+    superintendent: r.SUPERINTENDENT_NAME,
+    salary: toNumber(r.FTE_SALARY),
+    enrollment: toNumber(r.ENROLLMENT),
+  }));
 
   return (
     <div className="space-y-10">
@@ -63,6 +187,34 @@ export default function Home() {
 
       {/* 👇 Add the map back here */}
       <TexasMap />
+
+      {/* Home tables */}
+      <section className="space-y-8">
+        <div>
+          <h2 className="text-xl font-bold mb-2">Most Indebted Districts</h2>
+          <DataTable
+            columns={debtCols}
+            rows={debtRows}
+            initialSort={{ key: "debt", dir: "desc" }}
+          />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-2">Top Performing Districts</h2>
+          <DataTable
+            columns={perfCols}
+            rows={perfRows}
+            initialSort={{ key: "score", dir: "desc" }}
+          />
+        </div>
+        <div>
+          <h2 className="text-xl font-bold mb-2">Superintendent Salaries</h2>
+          <DataTable
+            columns={supCols}
+            rows={supRows}
+            initialSort={{ key: "salary", dir: "desc" }}
+          />
+        </div>
+      </section>
 
       {/* Recently viewed */}
       <section className="space-y-4">

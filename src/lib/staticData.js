@@ -16,6 +16,8 @@ export async function fetchCSV(path) {
       dynamicTyping: false,
       skipEmptyLines: true,
       worker: true,
+      transformHeader: (h) => h.trim(),
+      transform: (v) => (typeof v === "string" ? v.trim() : v),
     });
   } catch (e) {
     console.error("Papa.parse failed:", e);
