@@ -62,12 +62,7 @@ const _firstKey = function(obj, keys) {
 
 // SUPERINTENDENTS
 export async function loadSuperintendents() {
-  const res = await _fetchFirstGood([
-    "data/home/superintendents.csv",
-    "data/home/superintendent.csv",
-    "data/home/Superintendents.csv",
-    "data/home/Superintendent.csv"
-  ]);
+  const res = await _fetchFirstGood("data/home/superintendents.csv");
   if (!res.text) {
     console.info("[home] superintendents file not found. tried:", res.tried);
     return { tried: res.tried, okPath: null, rows: [] };

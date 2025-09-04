@@ -64,11 +64,7 @@ export function HighestPaidSuperintendents() {
 
       {top.length === 0 ? (
         <div className="text-sm text-gray-600 space-y-2">
-          <div><strong>File not found.</strong> Please upload one of the following to <code>public/data/home/</code>:</div>
-          <ul className="list-disc ml-5">
-            <li><code>superintendents.csv</code> (preferred)</li>
-            <li><code>superintendent.csv</code></li>
-          </ul>
+          <div><strong>File not found.</strong> Please upload <code>superintendents.csv</code> to <code>data/home/</code>.</div>
           <div className="text-gray-500">Tried paths: {data.tried.map(function(p,i){ return <code key={i} className="mr-1">{p}</code>; })}</div>
           <div className="text-gray-500">Required columns: <code>DISTRICT_N</code>, <code>DISTRICT_NAME</code>, <code>SUPERINTENDENT_NAME</code>, <code>FTE_SALARY</code>, <code>ENROLLMENT</code></div>
         </div>
@@ -140,7 +136,7 @@ export function MostIndebtedDistricts() {
       <div className="flex flex-col gap-2">
         {top.length === 0 && (
           <div className="text-sm text-gray-600 space-y-2">
-            <div><strong>File not found.</strong> Please upload <code>indebted.csv</code> to <code>public/data/home/</code>.</div>
+            <div><strong>File not found.</strong> Please upload <code>indebted.csv</code> to <code>data/home/</code>.</div>
             <div className="text-gray-500">Tried paths: {data.tried.map(function(p,i){ return <code key={i} className="mr-1">{p}</code>; })}</div>
           </div>
         )}
@@ -184,7 +180,7 @@ export function WorstPerformingDistricts() {
       <div className="flex flex-col gap-2">
         {bottom.length === 0 && (
           <div className="text-sm text-gray-600 space-y-2">
-            <div><strong>File not found.</strong> Please upload <code>performance.csv</code> to <code>public/data/home/</code>.</div>
+            <div><strong>File not found.</strong> Please upload <code>performance.csv</code> to <code>data/home/</code>.</div>
             <div className="text-gray-500">Tried paths: {data.tried.map(function(p,i){ return <code key={i} className="mr-1">{p}</code>; })}</div>
           </div>
         )}
