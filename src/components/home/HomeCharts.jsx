@@ -45,22 +45,32 @@ function Select({ value, onChange, options }) {
 
 /* 1) Highest-Paid Superintendents (table, top 15 by FTE salary) */
 export function HighestPaidSuperintendents() {
-  const [rows, setRows] = useState([]);
-  useEffect(function() { loadSuperintendents().then(setRows).catch(function() { setRows([]); }); }, []);
+  const [data, setData] = useState({ tried: [], okPath: null, rows: [] });
+  useEffect(function() {
+    loadSuperintendents().then(setData).catch(function() {
+      setData({ tried: [], okPath: null, rows: [] });
+    });
+  }, []);
 
   const top = useMemo(function() {
-    return [].concat(rows).sort(function(a,b){ return b.fteSalary - a.fteSalary; }).slice(0,15);
-  }, [rows]);
+    return [].concat(data.rows).sort(function(a,b){ return b.fteSalary - a.fteSalary; }).slice(0,15);
+  }, [data]);
 
   return (
     <div className="rounded-2xl border bg-white shadow-sm p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold">Highest-Paid Superintendents</h3>
+      <h3 className="text-lg font-semibold">Highest-Paid Superintendents</h3>
       </div>
 
       {top.length === 0 ? (
-        <div className="text-sm text-gray-500">
-          Upload <code>public/data/home/superintendents.csv</code> (or <code>Superintendent.csv</code>). Required columns include: DISTRICT_N, DISTRICT_NAME, SUPERINTENDENT_NAME, FTE_SALARY, ENROLLMENT.
+        <div className="text-sm text-gray-600 space-y-2">
+          <div><strong>File not found.</strong> Please upload one of the following to <code>public/data/home/</code>:</div>
+          <ul className="list-disc ml-5">
+            <li><code>superintendents.csv</code> (preferred)</li>
+            <li><code>superintendent.csv</code></li>
+          </ul>
+          <div className="text-gray-500">Tried paths: {data.tried.map(function(p,i){ return <code key={i} className="mr-1">{p}</code>; })}</div>
+          <div className="text-gray-500">Required columns: <code>DISTRICT_N</code>, <code>DISTRICT_NAME</code>, <code>SUPERINTENDENT_NAME</code>, <code>FTE_SALARY</code>, <code>ENROLLMENT</code></div>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -103,34 +113,48 @@ function EnrollmentFilter({ value, onChange }) {
 
 /* 2) Most Indebted Districts (top 15 by debt; filter by enrollment) */
 export function MostIndebtedDistricts() {
-  const [rows, setRows] = useState([]);
+  const [data, setData] = useState({ tried: [], okPath: null, rows: [] });
   const [bucket, setBucket] = useState("all");
-  useEffect(() => { loadIndebted().then(setRows).catch(() => setRows([])); }, []);
+  useEffect(function() {
+    loadIndebted().then(setData).catch(function() {
+      setData({ tried: [], okPath: null, rows: [] });
+    });
+  }, []);
 
-  const filtered = useMemo(() => {
-    const test = ENROLL_BUCKETS.find(b => b.key === bucket)?.test ?? (()=>true);
-    return rows.filter(r => test(Number(r.enroll) || 0));
-  }, [rows, bucket]);
+  const filtered = useMemo(function() {
+    const bucketObj = ENROLL_BUCKETS.find(function(b){ return b.key === bucket; });
+    const test = bucketObj && bucketObj.test ? bucketObj.test : function(){ return true; };
+    return data.rows.filter(function(r){ return test(Number(r.enroll) || 0); });
+  }, [data, bucket]);
 
-  const withMetric = useMemo(() => filtered.map(r => ({ ...r, metric: Number(r.debt) }))
-    .filter(r => Number.isFinite(r.metric)), [filtered]);
+  const withMetric = useMemo(function(){
+    return filtered.map(function(r){ return Object.assign({}, r, { metric: Number(r.debt) }); })
+      .filter(function(r){ return Number.isFinite(r.metric); });
+  }, [filtered]);
 
-  const top = useMemo(() => [...withMetric].sort((a,b)=>b.metric-a.metric).slice(0,15), [withMetric]);
-  const max = useMemo(() => top.reduce((m,r)=>Math.max(m,r.metric), 0), [top]);
+  const top = useMemo(function(){ return [].concat(withMetric).sort(function(a,b){ return b.metric - a.metric; }).slice(0,15); }, [withMetric]);
+  const max = useMemo(function(){ return top.reduce(function(m,r){ return Math.max(m,r.metric); }, 0); }, [top]);
 
   return (
     <Card title="Most Indebted Districts" action={<EnrollmentFilter value={bucket} onChange={setBucket} />}>
       <div className="flex flex-col gap-2">
-        {top.length === 0 && <div className="text-sm text-gray-500">Upload <code>public/data/home/indebted.csv</code>.</div>}
-        {top.map(r => (
-          <div key={r.id} className="flex items-center gap-3">
-            <div className="w-56 shrink-0">
-              <Link className="text-indigo-700 hover:underline" to={`/district/${encodeURIComponent(r.id)}`}>{r.name}</Link>
-            </div>
-            <div className="grow"><HBar value={r.metric} max={max} title={usd0(r.metric)} /></div>
-            <div className="w-28 text-right text-sm tabular-nums">{usd0(r.metric)}</div>
+        {top.length === 0 && (
+          <div className="text-sm text-gray-600 space-y-2">
+            <div><strong>File not found.</strong> Please upload <code>indebted.csv</code> to <code>public/data/home/</code>.</div>
+            <div className="text-gray-500">Tried paths: {data.tried.map(function(p,i){ return <code key={i} className="mr-1">{p}</code>; })}</div>
           </div>
-        ))}
+        )}
+        {top.map(function(r){
+          return (
+            <div key={r.id} className="flex items-center gap-3">
+              <div className="w-56 shrink-0">
+                <Link className="text-indigo-700 hover:underline" to={`/district/${encodeURIComponent(r.id)}`}>{r.name}</Link>
+              </div>
+              <div className="grow"><HBar value={r.metric} max={max} title={usd0(r.metric)} /></div>
+              <div className="w-28 text-right text-sm tabular-nums">{usd0(r.metric)}</div>
+            </div>
+          );
+        })}
       </div>
     </Card>
   );
@@ -138,31 +162,43 @@ export function MostIndebtedDistricts() {
 
 /* 3) Worst Performing Districts (bottom 15 by score; filter by enrollment) */
 export function WorstPerformingDistricts() {
-  const [rows, setRows] = useState([]);
+  const [data, setData] = useState({ tried: [], okPath: null, rows: [] });
   const [bucket, setBucket] = useState("all");
-  useEffect(() => { loadPerformance().then(setRows).catch(() => setRows([])); }, []);
+  useEffect(function(){
+    loadPerformance().then(setData).catch(function(){
+      setData({ tried: [], okPath: null, rows: [] });
+    });
+  }, []);
 
-  const filtered = useMemo(() => {
-    const test = ENROLL_BUCKETS.find(b => b.key === bucket)?.test ?? (()=>true);
-    return rows.filter(r => test(Number(r.enroll) || 0));
-  }, [rows, bucket]);
+  const filtered = useMemo(function(){
+    const bucketObj = ENROLL_BUCKETS.find(function(b){ return b.key === bucket; });
+    const test = bucketObj && bucketObj.test ? bucketObj.test : function(){ return true; };
+    return data.rows.filter(function(r){ return test(Number(r.enroll) || 0); });
+  }, [data, bucket]);
 
-  const bottom = useMemo(() => [...filtered].sort((a,b)=>a.score-b.score).slice(0,15), [filtered]);
-  const max = useMemo(() => bottom.reduce((m,r)=>Math.max(m,r.score), 0), [bottom]);
+  const bottom = useMemo(function(){ return [].concat(filtered).sort(function(a,b){ return a.score - b.score; }).slice(0,15); }, [filtered]);
+  const max = useMemo(function(){ return bottom.reduce(function(m,r){ return Math.max(m,r.score); }, 0); }, [bottom]);
 
   return (
     <Card title="Worst Performing Districts" action={<EnrollmentFilter value={bucket} onChange={setBucket} />}>
       <div className="flex flex-col gap-2">
-        {bottom.length === 0 && <div className="text-sm text-gray-500">Upload <code>public/data/home/performance.csv</code>.</div>}
-        {bottom.map(r => (
-          <div key={r.id} className="flex items-center gap-3">
-            <div className="w-56 shrink-0">
-              <Link className="text-indigo-700 hover:underline" to={`/district/${encodeURIComponent(r.id)}`}>{r.name}</Link>
-            </div>
-            <div className="grow"><HBar value={r.score} max={max || 100} title={String(Math.round(r.score))} /></div>
-            <div className="w-16 text-right text-sm tabular-nums">{Math.round(r.score)}</div>
+        {bottom.length === 0 && (
+          <div className="text-sm text-gray-600 space-y-2">
+            <div><strong>File not found.</strong> Please upload <code>performance.csv</code> to <code>public/data/home/</code>.</div>
+            <div className="text-gray-500">Tried paths: {data.tried.map(function(p,i){ return <code key={i} className="mr-1">{p}</code>; })}</div>
           </div>
-        ))}
+        )}
+        {bottom.map(function(r){
+          return (
+            <div key={r.id} className="flex items-center gap-3">
+              <div className="w-56 shrink-0">
+                <Link className="text-indigo-700 hover:underline" to={`/district/${encodeURIComponent(r.id)}`}>{r.name}</Link>
+              </div>
+              <div className="grow"><HBar value={r.score} max={max || 100} title={String(Math.round(r.score))} /></div>
+              <div className="w-16 text-right text-sm tabular-nums">{Math.round(r.score)}</div>
+            </div>
+          );
+        })}
       </div>
     </Card>
   );
