@@ -1,8 +1,15 @@
 import React from "react";
+
 export default function DataTable({ columns, rows, initialSort }) {
   const [sort, setSort] = React.useState(
     initialSort || { key: columns[0]?.key, dir: "asc" }
   );
+
+  const tryNum = (v) => {
+    if (typeof v === "number") return Number.isFinite(v) ? v : NaN;
+    const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
+    return Number.isNaN(n) ? NaN : n;
+  };
 
   const sorted = React.useMemo(() => {
     const out = [...rows];
@@ -10,21 +17,16 @@ export default function DataTable({ columns, rows, initialSort }) {
       const av = a[sort.key];
       const bv = b[sort.key];
 
-      const toNum = (v) => {
-        if (typeof v === "number") return v;
-        const n = Number(String(v).replace(/[^\d.-]/g, ""));
-        return Number.isNaN(n) ? null : n;
-      };
-      const an = toNum(av);
-      const bn = toNum(bv);
-      if (an != null && bn != null) {
+      const an = tryNum(av);
+      const bn = tryNum(bv);
+      if (!Number.isNaN(an) && !Number.isNaN(bn)) {
         const diff = an - bn;
         return sort.dir === "asc" ? diff : -diff;
       }
 
       // Fallback to string comparison
-      const as = String(av).toLowerCase();
-      const bs = String(bv).toLowerCase();
+      const as = String(av ?? "").toLowerCase();
+      const bs = String(bv ?? "").toLowerCase();
       if (as === bs) return 0;
       const cmp = as > bs ? 1 : -1;
       return sort.dir === "asc" ? cmp : -cmp;
@@ -34,7 +36,9 @@ export default function DataTable({ columns, rows, initialSort }) {
 
   const toggle = (key) => {
     setSort((s) =>
-      s.key === key ? { key, dir: s.dir === "asc" ? "desc" : "asc" } : { key, dir: "asc" }
+      s.key === key
+        ? { key, dir: s.dir === "asc" ? "desc" : "asc" }
+        : { key, dir: "asc" }
     );
   };
 
@@ -64,7 +68,7 @@ export default function DataTable({ columns, rows, initialSort }) {
           </thead>
           <tbody>
             {sorted.map((row, idx) => (
-              <tr key={row.id ?? idx} className="odd:bg-white even:bg-gray-50">
+              <tr key={idx} className="odd:bg-white even:bg-gray-50">
                 {columns.map((c) => (
                   <td
                     key={c.key}
@@ -81,3 +85,4 @@ export default function DataTable({ columns, rows, initialSort }) {
     </div>
   );
 }
+

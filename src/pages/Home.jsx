@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from "react"; 
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import StatCard from "../ui/StatCard";
 import EntityCard from "../ui/EntityCard";
 import DataTable from "../ui/DataTable";
-import { getStatewideStats } from "../lib/data";
+import { getStatewideStats, getDetectedFields } from "../lib/data";
 import { fetchCSV } from "../lib/staticData";
 import TexasMap from "../components/TexasMap";
 
@@ -21,9 +21,21 @@ const fmtMoney = (n) =>
       }).format(n)
     : "—";
 
+// Robust number parser for currency / ints: strips non-numeric (except . and -)
 const toNumber = (v) => {
+  if (typeof v === "number") return Number.isFinite(v) ? v : NaN;
+  if (v == null) return NaN;
   const n = Number(String(v).replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : NaN;
+};
+
+// Pick first finite number from a list of candidate keys on a row
+const pickNumber = (row, keys) => {
+  for (const k of keys) {
+    const n = toNumber(row[k]);
+    if (Number.isFinite(n)) return n;
+  }
+  return NaN;
 };
 
 export default function Home() {
@@ -32,19 +44,25 @@ export default function Home() {
   const [performance, setPerformance] = useState([]);
   const [superintendents, setSuperintendents] = useState([]);
 
+  // Statewide KPIs
   useEffect(() => {
     (async () => {
       try {
         const districtsCsv = "/data/Current_Districts_2025.csv";
-        const s = await getStatewideStats(districtsCsv);
+        const [s, fields] = await Promise.all([
+          getStatewideStats(districtsCsv),
+          getDetectedFields(districtsCsv),
+        ]);
+        console.table(fields); // which headers were used in KPI calc
         setStats(s);
       } catch (e) {
         console.error("Failed to load statewide stats:", e);
         setStats(null);
       }
     })();
-  }, [getStatewideStats]);
+  }, []);
 
+  // Home tables (CSV-backed)
   useEffect(() => {
     (async () => {
       try {
@@ -53,22 +71,13 @@ export default function Home() {
           fetchCSV("/data/home/performance.csv"),
           fetchCSV("/data/home/superintendents.csv"),
         ]);
-        setIndebted(
-          d.filter((r) => r.NAME && r.DISTRICT_N && r.Debt).slice(0, 10)
-        );
-        setPerformance(
-          p
-            .filter((r) => r.NAME && r.DISTRICT_N && r.DISTRICT_SCORE)
-            .slice(0, 10)
-        );
-        setSuperintendents(
-          s
-            .filter(
-              (r) =>
-                r.DISTRICT_NAME && r.DISTRICT_N && r.FTE_SALARY && r.SUPERINTENDENT_NAME
-            )
-            .slice(0, 10)
-        );
+
+        // Keep rows small (UI sorts anyway). Filter to rows that have id+name.
+        const hasIdName = (r) => r && r.DISTRICT_N && (r.DISTRICT_NAME || r.NAME);
+
+        setIndebted(d.filter(hasIdName).slice(0, 10));
+        setPerformance(p.filter(hasIdName).slice(0, 10));
+        setSuperintendents(s.filter(hasIdName).slice(0, 10));
       } catch (e) {
         console.error("Failed to load home tables:", e);
         setIndebted([]);
@@ -76,8 +85,9 @@ export default function Home() {
         setSuperintendents([]);
       }
     })();
-  }, [fetchCSV]);
+  }, []);
 
+  // ----- Most Indebted Districts -----
   const debtCols = [
     {
       key: "name",
@@ -99,11 +109,13 @@ export default function Home() {
 
   const debtRows = indebted.map((r) => ({
     id: r.DISTRICT_N,
-    name: r.NAME,
-    debt: toNumber(r.Debt),
-    perDebt: toNumber(r["Per-Pupil Debt"]),
+    name: r.DISTRICT_NAME || r.NAME,
+    // allow several header variants
+    debt: pickNumber(r, ["Debt", "TOTAL_DEBT", "DEBT", "DEBT_TOTAL"]),
+    perDebt: pickNumber(r, ["Per-Pupil Debt", "DEBT_PER_STUDENT", "PER_PUPIL_DEBT"]),
   }));
 
+  // ----- Top Performing Districts -----
   const perfCols = [
     {
       key: "name",
@@ -120,11 +132,17 @@ export default function Home() {
 
   const perfRows = performance.map((r) => ({
     id: r.DISTRICT_N,
-    name: r.NAME,
-    grade: r.DISTRICT_GRADE,
-    score: toNumber(r.DISTRICT_SCORE),
+    name: r.DISTRICT_NAME || r.NAME,
+    grade: r.DISTRICT_GRADE || r.OVERALL_RATING || r.RATING,
+    score: pickNumber(r, [
+      "DISTRICT_SCORE",
+      "OVERALL_SCORE",
+      "SCORE",
+      "ACCOUNTABILITY_SCORE",
+    ]),
   }));
 
+  // ----- Superintendent Salaries -----
   const supCols = [
     {
       key: "district",
@@ -152,10 +170,16 @@ export default function Home() {
 
   const supRows = superintendents.map((r) => ({
     id: r.DISTRICT_N,
-    district: r.DISTRICT_NAME,
-    superintendent: r.SUPERINTENDENT_NAME,
-    salary: toNumber(r.FTE_SALARY),
-    enrollment: toNumber(r.ENROLLMENT),
+    district: r.DISTRICT_NAME || r.NAME,
+    superintendent:
+      r.SUPERINTENDENT_NAME || r.SUPT_NAME || r.SUPERINTENDENT,
+    salary: pickNumber(r, [
+      "FTE_SALARY",
+      "SUPERINTENDENT_SALARY",
+      "SUPT_SALARY",
+      "BASE_FTE_SALARY",
+    ]),
+    enrollment: pickNumber(r, ["ENROLLMENT", "ENR", "STUDENTS"]),
   }));
 
   return (
@@ -168,20 +192,51 @@ export default function Home() {
           Explore Texas districts, campuses, and spending records in one place.
         </p>
 
-        {/* Your 8 KPIs */}
+        {/* KPIs */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Spending" value={fmtMoney(stats?.totalSpendingSum)} to="/spending" />
-          <StatCard label="Enrollment" value={fmtInt(stats?.enrollmentTotal)} to="/districts" />
-          <StatCard label="Avg Per-Student Spending" value={fmtMoney(stats?.perStudentSpendingAvgFixed)} to="/districts" />
-          <StatCard label="District Debt" value={fmtMoney(stats?.districtDebtTotal)} to="/districts" />
-          <StatCard label="Per-Pupil Debt" value={fmtMoney(stats?.perPupilDebtAvg)} to="/districts" />
-          <StatCard label="Average Teacher Salary" value={fmtMoney(stats?.teacherSalaryAvg)} to="/districts" />
-          <StatCard label="Average Principal Salary" value={fmtMoney(stats?.principalSalaryAvg)} to="/districts" />
-          <StatCard label="Superintendent Salary" value={fmtMoney(stats?.superintendentSalaryAvg)} to="/districts" />
+          <StatCard
+            label="Total Spending"
+            value={fmtMoney(stats?.totalSpendingSum)}
+            to="/spending"
+          />
+          <StatCard
+            label="Enrollment"
+            value={fmtInt(stats?.enrollmentTotal)}
+            to="/districts"
+          />
+          <StatCard
+            label="Avg Per-Student Spending"
+            value={fmtMoney(stats?.perStudentSpendingAvgFixed)}
+            to="/districts"
+          />
+          <StatCard
+            label="District Debt"
+            value={fmtMoney(stats?.districtDebtTotal)}
+            to="/districts"
+          />
+          <StatCard
+            label="Per-Pupil Debt"
+            value={fmtMoney(stats?.perPupilDebtAvg)}
+            to="/districts"
+          />
+          <StatCard
+            label="Average Teacher Salary"
+            value={fmtMoney(stats?.teacherSalaryAvg)}
+            to="/districts"
+          />
+          <StatCard
+            label="Average Principal Salary"
+            value={fmtMoney(stats?.principalSalaryAvg)}
+            to="/districts"
+          />
+          <StatCard
+            label="Superintendent Salary"
+            value={fmtMoney(stats?.superintendentSalaryAvg)}
+            to="/districts"
+          />
         </div>
       </section>
 
-      {/* 👇 Add the map back here */}
       <TexasMap />
 
       {/* Home tables */}
@@ -221,11 +276,27 @@ export default function Home() {
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <EntityCard title="Austin ISD" subtitle="Travis County" tags={["Large","Urban"]} to="/district/227901" />
-          <EntityCard title="Northside ISD" subtitle="Bexar County" tags={["Large","Urban"]} to="/district/015915" />
-          <EntityCard title="Sharyland ISD" subtitle="Hidalgo County" tags={["Mid","Suburban"]} to="/district/108911" />
+          <EntityCard
+            title="Austin ISD"
+            subtitle="Travis County"
+            tags={["Large", "Urban"]}
+            to="/district/227901"
+          />
+          <EntityCard
+            title="Northside ISD"
+            subtitle="Bexar County"
+            tags={["Large", "Urban"]}
+            to="/district/015915"
+          />
+          <EntityCard
+            title="Sharyland ISD"
+            subtitle="Hidalgo County"
+            tags={["Mid", "Suburban"]}
+            to="/district/108911"
+          />
         </div>
       </section>
     </div>
   );
 }
+
