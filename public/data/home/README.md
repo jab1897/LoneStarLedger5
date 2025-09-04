@@ -3,7 +3,11 @@
 Upload your files here:
 
 - superintendents.csv
-  - DISTRICT_ID, DISTRICT_NAME, SUPERINTENDENT_SALARY
+  - DISTRICT_N (or DISTRICT_ID/DISTRICT_NUMBER)
+  - DISTRICT_NAME
+  - SUPERINTENDENT_NAME
+  - FTE_SALARY (or SUPERINTENDENT_SALARY/SUPT_SALARY/BASE_FTE_SALARY)
+  - ENROLLMENT
 
 - indebted.csv
   - DISTRICT_ID, DISTRICT_NAME, TOTAL_DEBT or DEBT_PER_STUDENT, ENROLLMENT
@@ -13,4 +17,4 @@ Upload your files here:
 
 Notes:
 - One header row; comma-delimited.
-- Links on the homepage use DISTRICT_ID → /district/:id
+- Links on the homepage use DISTRICT_N → /district/:id

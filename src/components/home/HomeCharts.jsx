@@ -5,7 +5,8 @@ import {
   loadIndebted,
   loadPerformance,
   ENROLL_BUCKETS,
-  usd0
+  usd0,
+  int0
 } from "../../lib/homeData";
 
 // Minimal horizontal bar using Tailwind only
@@ -42,28 +43,56 @@ function Select({ value, onChange, options }) {
   );
 }
 
-/* 1) Highest-Paid Superintendents (top 15) */
+/* 1) Highest-Paid Superintendents (table, top 15 by FTE salary) */
 export function HighestPaidSuperintendents() {
   const [rows, setRows] = useState([]);
-  useEffect(() => { loadSuperintendents().then(setRows).catch(() => setRows([])); }, []);
-  const top = useMemo(() => [...rows].sort((a,b)=>b.pay-a.pay).slice(0,15), [rows]);
-  const max = useMemo(() => top.reduce((m,r)=>Math.max(m,r.pay), 0), [top]);
+  useEffect(function() { loadSuperintendents().then(setRows).catch(function() { setRows([]); }); }, []);
+
+  const top = useMemo(function() {
+    return [].concat(rows).sort(function(a,b){ return b.fteSalary - a.fteSalary; }).slice(0,15);
+  }, [rows]);
 
   return (
-    <Card title="Highest-Paid Superintendents">
-      <div className="flex flex-col gap-2">
-        {top.length === 0 && <div className="text-sm text-gray-500">Upload <code>public/data/home/superintendents.csv</code>.</div>}
-        {top.map(r => (
-          <div key={r.id} className="flex items-center gap-3">
-            <div className="w-56 shrink-0">
-              <Link className="text-indigo-700 hover:underline" to={`/district/${encodeURIComponent(r.id)}`}>{r.name}</Link>
-            </div>
-            <div className="grow"><HBar value={r.pay} max={max} title={usd0(r.pay)} /></div>
-            <div className="w-24 text-right text-sm tabular-nums">{usd0(r.pay)}</div>
-          </div>
-        ))}
+    <div className="rounded-2xl border bg-white shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-semibold">Highest-Paid Superintendents</h3>
       </div>
-    </Card>
+
+      {top.length === 0 ? (
+        <div className="text-sm text-gray-500">
+          Upload <code>public/data/home/superintendents.csv</code> (or <code>Superintendent.csv</code>). Required columns include: DISTRICT_N, DISTRICT_NAME, SUPERINTENDENT_NAME, FTE_SALARY, ENROLLMENT.
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="text-left text-gray-600">
+                <th className="py-2 pr-4">District</th>
+                <th className="py-2 pr-4">Superintendent</th>
+                <th className="py-2 pr-4 text-right">FTE Salary</th>
+                <th className="py-2 pr-0 text-right">Enrollment</th>
+              </tr>
+            </thead>
+            <tbody>
+              {top.map(function(r) {
+                return (
+                  <tr key={r.id} className="border-t last:border-b-0">
+                    <td className="py-2 pr-4">
+                      <Link className="text-indigo-700 hover:underline" to={`/district/${encodeURIComponent(r.id)}`}>
+                        {r.name}
+                      </Link>
+                    </td>
+                    <td className="py-2 pr-4">{r.supName || "—"}</td>
+                    <td className="py-2 pr-4 text-right tabular-nums">{usd0(r.fteSalary)}</td>
+                    <td className="py-2 pr-0 text-right tabular-nums">{int0(r.enroll)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -29,17 +29,61 @@ function parseCSV(text) {
 
 const firstKey = (obj, keys) => keys.find(k => obj[k] != null && obj[k] !== "") || null;
 
+const _num = (v) => {
+  const n = Number(String(v ?? "").replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : NaN;
+};
+
+async function _fetchTextAny(paths) {
+  for (const p of paths) {
+    try {
+      const res = await fetch(p, { cache: "no-cache" });
+      if (res && res.ok) return await res.text();
+    } catch (_) {}
+  }
+  return null;
+}
+
+function _parseCSV(text) {
+  if (!text) return { headers: [], rows: [] };
+  const lines = text.replace(/\r/g, "").split("\n").filter(Boolean);
+  if (!lines.length) return { headers: [], rows: [] };
+  const headers = lines[0].split(",").map(h => h.trim());
+  const rows = lines.slice(1).map(line => {
+    const cells = line.split(",");
+    const obj = {};
+    headers.forEach((h,i) => { obj[h] = (cells[i] ?? "").trim(); });
+    return obj;
+  });
+  return { headers, rows };
+}
+
+const _firstKey = (obj, keys) => keys.find(k => obj[k] != null && obj[k] !== "") || null;
+
 // ----- Loaders -----
 export async function loadSuperintendents() {
-  const txt = await fetchText("/data/home/superintendents.csv");
-  const { rows } = parseCSV(txt);
+  const txt = await _fetchTextAny([
+    "/data/home/superintendents.csv",
+    "/data/home/Superintendent.csv"
+  ]);
+  const { rows } = _parseCSV(txt);
+
   return rows.map(r => {
-    const id = r.DISTRICT_ID ?? r.DISTRICT ?? r.DISTRICT_NUMBER ?? r.DISTRICT_N;
-    const name = r.DISTRICT_NAME ?? r.NAME ?? r.DNAME ?? "";
-    const payKey = firstKey(r, ["SUPERINTENDENT_SALARY","SUPT_SALARY","SALARY"]);
-    const pay = num(r[payKey]);
-    return { id, name, pay };
-  }).filter(d => d.id && d.name && Number.isFinite(d.pay));
+    const idKey   = _firstKey(r, ["DISTRICT_N","DISTRICT_ID","DISTRICT_NUMBER"]);
+    const nameKey = _firstKey(r, ["DISTRICT_NAME","NAME","DNAME"]);
+    const supKey  = _firstKey(r, ["SUPERINTENDENT_NAME","SUPT_NAME","SUPERINTENDENT"]);
+    const salKey  = _firstKey(r, ["FTE_SALARY","SUPERINTENDENT_SALARY","SUPT_SALARY","BASE_FTE_SALARY"]);
+    const enrKey  = _firstKey(r, ["ENROLLMENT","ENR","STUDENTS"]);
+
+    const id        = r[idKey];
+    const name      = r[nameKey];
+    const supName   = r[supKey] ?? "";
+    const fteSalary = _num(r[salKey]);
+    const enroll    = _num(r[enrKey]);
+
+    return { id, name, supName, fteSalary, enroll };
+  })
+  .filter(d => d && d.id && d.name && Number.isFinite(d.fteSalary));
 }
 
 export async function loadIndebted() {
@@ -83,3 +127,4 @@ export const ENROLL_BUCKETS = [
 ];
 
 export const usd0 = (n) => Number.isFinite(n) ? "$" + Math.round(n).toLocaleString() : "—";
+export const int0 = (n) => Number.isFinite(n) ? Math.round(n).toLocaleString() : "—";
