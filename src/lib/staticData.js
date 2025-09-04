@@ -1,27 +1,72 @@
-import Papa from "papaparse";
+import { parseCSV } from "./csvUtils";
 
-export async function fetchCSV(path) {
-  const res = await fetch(path, { cache: "force-cache" });
-  if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
-  const text = await res.text();
-  if (/^\s*<!doctype html/i.test(text) || /^\s*<html/i.test(text)) {
-    throw new Error(`fetchCSV(${path}) returned HTML — check SPA rewrites or file path.`);
-  }
-  let parsed;
+function dbgOn() {
+  if (import.meta?.env?.DEV) return true;
   try {
-    // Keep everything as strings so we do not lose leading zeros on IDs
-    parsed = Papa.parse(text, {
-      header: true,
-      dynamicTyping: false,
-      skipEmptyLines: true,
-      worker: true,
-      transformHeader: (h) => h.trim(),
-      transform: (v) => (typeof v === "string" ? v.trim() : v),
-    });
-  } catch (e) {
-    throw e;
+    const usp = new URLSearchParams(window.location.search);
+    return usp.get("debug") === "csv";
+  } catch { return false; }
+}
+
+async function head(url) {
+  try { const r = await fetch(url, { method: "HEAD", cache: "no-store" }); return r.status; }
+  catch { return 0; }
+}
+async function get(url) {
+  try {
+    const r = await fetch(url, { method: "GET", cache: "no-store" });
+    const text = r.ok ? await r.text() : null;
+    return { ok: r.ok, status: r.status, text };
+  } catch { return { ok: false, status: 0, text: null }; }
+}
+
+/**
+ * Fetch CSV rows from a public asset path like "/data/home/superintendents.csv".
+ * Returns an array of row objects keyed by header names.
+ */
+export async function fetchCSV(path) {
+  // Build candidate URLs in order of preference
+  const rawBase = import.meta.env.BASE_URL || "/";
+  const base = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
+  const asAbs = (p) => (p.startsWith("/") ? p : "/" + p);
+  const primary = base + asAbs(path);
+  const cacheBust = `${primary}${primary.includes("?") ? "&" : "?"}v=${Date.now()}`;
+  const fallbackPublic = base + asAbs(path.startsWith("/") ? "public" + path : "public/" + path);
+
+  const tried = [];
+  let okUrl = null, bytes = 0, hStatus = 0, gStatus = 0, text = null;
+
+  for (const url of [primary, cacheBust, fallbackPublic]) {
+    tried.push(url);
+    hStatus = await head(url);
+    const g = await get(url);
+    gStatus = g.status;
+    if (g.ok && g.text) {
+      okUrl = url; text = g.text; bytes = g.text.length;
+      break;
+    }
   }
-  return Array.isArray(parsed?.data) ? parsed.data : [];
+
+  if (dbgOn()) {
+    console.info("[fetchCSV] diag", {
+      requested: path,
+      tried,
+      okUrl,
+      headStatus: hStatus,
+      getStatus: gStatus,
+      bytes,
+      origin: typeof window !== "undefined" ? window.location.origin : "",
+      baseUrl: import.meta.env.BASE_URL || "/",
+    });
+    if (okUrl === fallbackPublic) {
+      console.warn("[fetchCSV] WARNING: only /public/... URL succeeded. At runtime you should fetch /data/... not /public/...");
+    }
+  }
+
+  if (!okUrl || !text) return [];
+
+  const { rows } = parseCSV(text);
+  return rows;
 }
 
 export async function fetchJSON(path) {
