@@ -5,8 +5,7 @@ export async function fetchCSV(path) {
   if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
   const text = await res.text();
   if (/^\s*<!doctype html/i.test(text) || /^\s*<html/i.test(text)) {
-    console.error(`fetchCSV(${path}) returned HTML — check SPA rewrites or file path.`);
-    throw new Error(`CSV/TSV not served: ${path}`);
+    throw new Error(`fetchCSV(${path}) returned HTML — check SPA rewrites or file path.`);
   }
   let parsed;
   try {
@@ -20,11 +19,7 @@ export async function fetchCSV(path) {
       transform: (v) => (typeof v === "string" ? v.trim() : v),
     });
   } catch (e) {
-    console.error("Papa.parse failed:", e);
     throw e;
-  }
-  if (parsed?.errors?.length) {
-    console.warn("CSV parse errors:", parsed.errors.slice(0, 3));
   }
   return Array.isArray(parsed?.data) ? parsed.data : [];
 }

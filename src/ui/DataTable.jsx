@@ -64,7 +64,7 @@ export default function DataTable({ columns, rows, initialSort }) {
           </thead>
           <tbody>
             {sorted.map((row, idx) => (
-              <tr key={idx} className="odd:bg-white even:bg-gray-50">
+              <tr key={row.id ?? idx} className="odd:bg-white even:bg-gray-50">
                 {columns.map((c) => (
                   <td
                     key={c.key}

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import StatCard from "../ui/StatCard";
 import EntityCard from "../ui/EntityCard";
 import DataTable from "../ui/DataTable";
-import { getStatewideStats, getDetectedFields } from "../lib/data";
+import { getStatewideStats } from "../lib/data";
 import { fetchCSV } from "../lib/staticData";
 import TexasMap from "../components/TexasMap";
 
@@ -36,18 +36,14 @@ export default function Home() {
     (async () => {
       try {
         const districtsCsv = "/data/Current_Districts_2025.csv";
-        const [s, fields] = await Promise.all([
-          getStatewideStats(districtsCsv),
-          getDetectedFields(districtsCsv),
-        ]);
-        console.table(fields); // Inspect which headers were used
+        const s = await getStatewideStats(districtsCsv);
         setStats(s);
       } catch (e) {
         console.error("Failed to load statewide stats:", e);
         setStats(null);
       }
     })();
-  }, []);
+  }, [getStatewideStats]);
 
   useEffect(() => {
     (async () => {
@@ -80,7 +76,7 @@ export default function Home() {
         setSuperintendents([]);
       }
     })();
-  }, []);
+  }, [fetchCSV]);
 
   const debtCols = [
     {
