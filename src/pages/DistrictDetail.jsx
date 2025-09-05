@@ -40,7 +40,7 @@ function buildHeaderMap(row) {
   }
   return map;
 }
-function pick(row, hdrMap, ...labels) {
+function pickHdr(row, hdrMap, ...labels) {
   for (const label of labels) {
     const key = hdrMap.get(norm(label));
     if (key && row && row[key] !== undefined && row[key] !== "") return row[key];
@@ -54,6 +54,15 @@ const toNumSafe = (v) => {
   return Number.isNaN(n) ? NaN : n;
 };
 
+// Pick first non-empty value
+const pick = (row, ...keys) => {
+  for (const k of keys) {
+    const v = row?.[k];
+    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+  }
+  return null;
+};
+
 const toNum = (v) => {
   const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : NaN;
@@ -64,11 +73,6 @@ const toPct = (v, digits = 1) => {
   if (!Number.isFinite(n)) return "—";
   const clamped = Math.max(0, Math.min(1, n));
   return `${(clamped * 100).toFixed(digits)}%`;
-};
-
-const oneMinus = (v) => {
-  const n = toNum(v);
-  return Number.isFinite(n) ? Math.max(0, Math.min(1, 1 - n)) : NaN;
 };
 
 export default function DistrictDetail() {
@@ -129,15 +133,15 @@ export default function DistrictDetail() {
 
   // Title prefers CSV NAME, else GeoJSON
   const displayName =
-    (row && (pick(row, hdr, "NAME") || pick(row, hdr, "DISTRICT", "DISTNAME"))) ||
+    (row && (pickHdr(row, hdr, "NAME") || pickHdr(row, hdr, "DISTRICT", "DISTNAME"))) ||
     (geom?.features?.[0]?.properties?.NAME ||
       geom?.features?.[0]?.properties?.DISTRICT ||
       geom?.features?.[0]?.properties?.DISTNAME) ||
     `District ${id}`;
-  const county = row ? pick(row, hdr, "COUNTY") || "" : "";
+  const county = row ? pickHdr(row, hdr, "COUNTY") || "" : "";
 
   // KPIs from CSV row
-  const k = (label, ...alts) => toNumSafe(pick(row, hdr, label, ...alts));
+  const k = (label, ...alts) => toNumSafe(pickHdr(row, hdr, label, ...alts));
   let totalSpending = k("Total Spending", "TOTAL_SPENDING");
   const enrollment = k("Enrollment", "ENROLLMENT", "TOTAL_ENROLLMENT", "STUDENTS");
   const perStudentCSV = k("Average Per-Student Spending", "Per-Pupil Spending", "Per Pupil Spending");
@@ -156,16 +160,88 @@ export default function DistrictDetail() {
   // campuses table rows
   const campusRows = React.useMemo(() => {
     const rows = (campuses || []).map((r) => {
-      const campusId = r["USER_School_Number"];
-      const campusName = r["USER_School_Name"];
-      const campusGrade = r["Campus Grade"] || "—";
-      const campusScore = toNum(r["Campus Score"]);
+      // ID (link only) + name
+      const campusId = pick(
+        r,
+        "USER_School_Number",
+        "CAMPUS_N",
+        "CAMPUS_ID",
+        "Campus Number",
+        "Campus_Number",
+        "ID"
+      );
+      const campusName = pick(
+        r,
+        "USER_School_Name",
+        "CAMPUS_NAME",
+        "Campus",
+        "NAME"
+      );
 
-      const readingOGL = r["Reading On Grade-Level"];
-      const mathOGL = r["Math On Grade-Level"];
+      // Grade (letter)
+      const campusGrade =
+        pick(r, "Campus Grade", "CAMPUS_GRADE", "Campus_Rating", "RATING") ||
+        "—";
 
-      const readingNot = oneMinus(readingOGL);
-      const mathNot = oneMinus(mathOGL);
+      // Preferred: NOT-on-grade-level shares already in CSV (use directly)
+      let readingNot = pick(
+        r,
+        "Share of Students Not on Grade-Level: Reading",
+        "Reading Not on Grade-Level",
+        "READING_NOT_GL",
+        "READING_NOT_OGR"
+      );
+      let mathNot = pick(
+        r,
+        "Share of Students Not on Grade-Level: Math",
+        "Math Not on Grade-Level",
+        "MATH_NOT_GL",
+        "MATH_NOT_OGR"
+      );
+
+      // Fallback: compute 1 - OGL only if NOT-GL fields are absent
+      if (readingNot === null) {
+        const readOGL = pick(
+          r,
+          "Reading On Grade-Level",
+          "READING_OGR",
+          "READING_OGL",
+          "Reading OGL"
+        );
+        if (readOGL !== null) {
+          const n = toNum(readOGL);
+          readingNot = Number.isFinite(n)
+            ? Math.max(0, Math.min(1, 1 - n))
+            : null;
+        }
+      }
+      if (mathNot === null) {
+        const mathOGL = pick(
+          r,
+          "Math On Grade-Level",
+          "MATH_OGR",
+          "MATH_OGL",
+          "Math OGL"
+        );
+        if (mathOGL !== null) {
+          const n = toNum(mathOGL);
+          mathNot = Number.isFinite(n)
+            ? Math.max(0, Math.min(1, 1 - n))
+            : null;
+        }
+      }
+
+      // Enrollment (fix zeros by using correct field)
+      const enrollment = toNum(
+        pick(r, "Enrollment", "ENROLLMENT", "EnrolLment", "ENR", "STUDENTS")
+      );
+
+      // Optional: keep whatever else you already show (score, counts, etc.)
+      const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
+      const teachers = toNum(pick(r, "Teacher Count"));
+      const admins = toNum(pick(r, "Admin Count"));
+      const teacherSalary = toNum(pick(r, "Average Teacher Salary"));
+      const adminSalary = toNum(pick(r, "Average Admin Salary"));
 
       return {
         campusId,
@@ -174,11 +250,11 @@ export default function DistrictDetail() {
         campusScore: Number.isFinite(campusScore) ? campusScore : "—",
         readingNot,
         mathNot,
-        enrollment: toNum(r["EnrolLment"]),
-        teachers: toNum(r["Teacher Count"]),
-        admins: toNum(r["Admin Count"]),
-        teacherSalary: toNum(r["Average Teacher Salary"]),
-        adminSalary: toNum(r["Average Admin Salary"]),
+        enrollment: Number.isFinite(enrollment) ? enrollment : null,
+        teachers,
+        admins,
+        teacherSalary,
+        adminSalary,
       };
     });
 
@@ -218,13 +294,13 @@ export default function DistrictDetail() {
       key: "readingNot",
       label: "Share of Students Not on Grade-Level: Reading",
       align: "right",
-      format: (v) => (Number.isFinite(v) ? toPct(v) : "—"),
+      format: (v) => (v === null ? "—" : toPct(v)),
     },
     {
       key: "mathNot",
       label: "Share of Students Not on Grade-Level: Math",
       align: "right",
-      format: (v) => (Number.isFinite(v) ? toPct(v) : "—"),
+      format: (v) => (v === null ? "—" : toPct(v)),
     },
     {
       key: "enrollment",
