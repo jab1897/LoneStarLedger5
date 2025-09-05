@@ -1,26 +1,63 @@
 import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import { fetchCSV } from "../lib/staticData";
 
 const DEBOUNCE_MS = 200;
-
-// Alias helper: return first non-empty key
-const get = (obj, keys) => {
-  for (const k of keys) {
-    if (obj && obj[k] != null && obj[k] !== "") return obj[k];
-  }
+const get = (o, ks) => {
+  for (const k of ks) if (o?.[k]) return o[k];
   return null;
 };
 
+function DropdownPortal({ anchorRef, open, children }) {
+  const [rect, setRect] = useState(null);
+
+  useEffect(() => {
+    if (!open || !anchorRef.current) return;
+    const update = () => setRect(anchorRef.current.getBoundingClientRect());
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(anchorRef.current);
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update, true);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update, true);
+    };
+  }, [open, anchorRef]);
+
+  if (!open || !rect) return null;
+  const style = {
+    position: "fixed",
+    left: rect.left + "px",
+    top: rect.bottom + "px",
+    width: rect.width + "px",
+    zIndex: 99999,
+  };
+  return createPortal(
+    <div style={style} className="z-[99999]">
+      {children}
+    </div>,
+    document.body
+  );
+}
+
 export default function SearchBar() {
   const [q, setQ] = useState("");
-  const [districts, setDistricts] = useState([]); // { id, name }
-  const [campuses, setCampuses] = useState([]);   // { id, name }
+  const [districts, setDistricts] = useState([]);
+  const [campuses, setCampuses] = useState([]);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [suggestions, setSuggestions] = useState([]);
   const nav = useNavigate();
-  const boxRef = useRef(null);
+  const rootRef = useRef(null);
+  const inputRef = useRef(null);
   const timer = useRef(null);
+
+  useEffect(() => {
+    console.info("[Search] mounted");
+  }, []);
 
   // Load datasets once
   useEffect(() => {
@@ -29,26 +66,26 @@ export default function SearchBar() {
         const drows = await fetchCSV("/data/Current_Districts_2025.csv");
         const crows = await fetchCSV("/data/Current_Campuses_2025.csv").catch(() => []);
         const d = (drows || [])
-          .map(r => ({
+          .map((r) => ({
             id: get(r, ["DISTRICT_N", "DISTRICT_ID", "DISTRICT_NUMBER", "ID"]),
-            name: get(r, ["DISTRICT_NAME", "NAME", "DNAME"])
+            name: get(r, ["DISTRICT_NAME", "NAME", "DNAME"]),
           }))
-          .filter(x => x.id && x.name);
+          .filter((x) => x.id && x.name);
         const c = (crows || [])
-          .map(r => ({
+          .map((r) => ({
             id: get(r, ["CAMPUS_N", "CAMPUS_ID", "ID"]),
-            name: get(r, ["CAMPUS_NAME", "NAME"])
+            name: get(r, ["CAMPUS_NAME", "NAME"]),
           }))
-          .filter(x => x.id && x.name);
+          .filter((x) => x.id && x.name);
         setDistricts(d);
         setCampuses(c);
       } catch (e) {
-        console.error("Search datasets failed to load", e);
+        console.error("[Search] datasets failed to load", e);
       }
     })();
   }, []);
 
-  const [suggestions, setSuggestions] = useState([]);
+  // Debounced suggestion builder
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
@@ -59,60 +96,66 @@ export default function SearchBar() {
         setOpen(false);
         return;
       }
-      const match = list => list.filter(x => x.name.toLowerCase().includes(term));
-      const d = match(districts).slice(0, 6).map(x => ({ ...x, type: "district" }));
-      const c = match(campuses).slice(0, 6).map(x => ({ ...x, type: "campus" }));
-      setSuggestions([...d, ...c]);
+      const match = (list) => list.filter((x) => x.name.toLowerCase().includes(term));
+      const d = match(districts).slice(0, 6).map((x) => ({ ...x, type: "district" }));
+      const c = match(campuses).slice(0, 6).map((x) => ({ ...x, type: "campus" }));
+      const combined = [...d, ...c];
+      setSuggestions(combined);
       setActive(0);
-      setOpen(true);
+      setOpen(combined.length > 0);
+      console.info("[Search] suggestions", { q: term, d: d.length, c: c.length });
     }, DEBOUNCE_MS);
     return () => timer.current && clearTimeout(timer.current);
   }, [q, districts, campuses]);
 
-  const go = item => {
+  const go = (item) => {
     if (!item) return;
+    console.info("[Search] go", item);
     if (item.type === "district") nav(`/district/${encodeURIComponent(item.id)}`);
     else if (item.type === "campus") nav(`/campus/${encodeURIComponent(item.id)}`);
     setQ("");
     setOpen(false);
   };
 
-  const onKeyDown = e => {
-    if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+  const onKeyDown = (e) => {
+    if (e.key === "ArrowDown" && suggestions.length) {
+      e.preventDefault();
+      setActive((a) => Math.min(a + 1, suggestions.length - 1));
       setOpen(true);
-      return;
-    }
-    if (!suggestions.length) return;
-    if (e.key === "ArrowDown") {
+    } else if (e.key === "ArrowUp" && suggestions.length) {
       e.preventDefault();
-      setActive(a => Math.min(a + 1, suggestions.length - 1));
-    }
-    if (e.key === "ArrowUp") {
+      setActive((a) => Math.max(a - 1, 0));
+    } else if (e.key === "Enter") {
       e.preventDefault();
-      setActive(a => Math.max(a - 1, 0));
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      go(suggestions[active]);
-    }
-    if (e.key === "Escape") {
+      if (suggestions.length) {
+        go(suggestions[active] || suggestions[0]);
+      } else {
+        const term = q.trim().toLowerCase();
+        const pick = [...districts, ...campuses].find((x) => x.name.toLowerCase().includes(term));
+        if (pick) {
+          go({ ...pick, type: districts.includes(pick) ? "district" : "campus" });
+        }
+      }
+    } else if (e.key === "Escape") {
       setOpen(false);
     }
   };
 
+  // Click outside to close
   useEffect(() => {
-    const onClick = e => {
-      if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
+    const onClick = (ev) => {
+      if (rootRef.current && !rootRef.current.contains(ev.target)) setOpen(false);
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
   return (
-    <div ref={boxRef} className="relative w-full" role="combobox" aria-expanded={open}>
+    <div ref={rootRef} className="relative w-full" role="combobox" aria-expanded={open}>
       <input
+        ref={inputRef}
         value={q}
-        onChange={e => setQ(e.target.value)}
+        onChange={(e) => setQ(e.target.value)}
         onFocus={() => q && setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder="Search district or campus"
@@ -120,16 +163,18 @@ export default function SearchBar() {
         aria-autocomplete="list"
         aria-controls="search-suggestions"
       />
-      {open && suggestions.length > 0 && (
+
+      <DropdownPortal anchorRef={inputRef} open={open}>
         <ul
           id="search-suggestions"
-          className="absolute z-50 left-0 right-0 mt-1 bg-white border rounded-md shadow max-h-72 overflow-auto"
+          className="bg-white border rounded-md shadow max-h-72 overflow-auto z-[99999]"
+          role="listbox"
         >
           {suggestions.map((s, i) => (
             <li
               key={`${s.type}-${s.id}`}
               onMouseEnter={() => setActive(i)}
-              onMouseDown={e => e.preventDefault()}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => go(s)}
               className={`px-3 py-2 cursor-pointer ${i === active ? "bg-indigo-50" : ""}`}
               role="option"
@@ -142,7 +187,7 @@ export default function SearchBar() {
             </li>
           ))}
         </ul>
-      )}
+      </DropdownPortal>
     </div>
   );
 }
