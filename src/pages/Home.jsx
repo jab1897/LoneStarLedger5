@@ -105,7 +105,18 @@ export default function Home() {
         const hasIdName = (r) => r && r.DISTRICT_N && (r.DISTRICT_NAME || r.NAME);
 
         setIndebted(d.filter(hasIdName).slice(0, 10));
-        setPerformance(p.filter(hasIdName).slice(0, 10));
+        const scoreKeys = [
+          "DISTRICT_SCORE",
+          "OVERALL_SCORE",
+          "SCORE",
+          "ACCOUNTABILITY_SCORE",
+        ];
+        setPerformance(
+          p
+            .filter(hasIdName)
+            .sort((a, b) => pickNumber(a, scoreKeys) - pickNumber(b, scoreKeys))
+            .slice(0, 10)
+        );
         setSuperintendents(s.filter(hasIdName).slice(0, 10));
       } catch (e) {
         console.error("Failed to load home tables:", e);
@@ -144,7 +155,7 @@ export default function Home() {
     perDebt: pickNumber(r, ["Per-Pupil Debt", "DEBT_PER_STUDENT", "PER_PUPIL_DEBT"]),
   }));
 
-  // ----- Top Performing Districts -----
+  // ----- Poorest Performing Districts -----
   const perfCols = [
     {
       key: "name",
@@ -299,11 +310,11 @@ export default function Home() {
           />
         </div>
         <div>
-          <h2 className="text-xl font-bold mb-2">Top Performing Districts</h2>
+          <h2 className="text-xl font-bold mb-2">Poorest Performing Districts</h2>
           <DataTable
             columns={perfCols}
             rows={perfRows}
-            initialSort={{ key: "score", dir: "desc" }}
+            initialSort={{ key: "score", dir: "asc" }}
           />
         </div>
         <div>
