@@ -7,7 +7,6 @@ import { usd, num } from "../lib/format";
 import LeafMap from "../ui/Map";
 import { loadDistrictsCSV } from "../lib/data";
 import { getCampusesForDistrict } from "../lib/campuses";
-import DataTable from "../ui/DataTable";
 
 const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON =
@@ -40,7 +39,7 @@ function buildHeaderMap(row) {
   }
   return map;
 }
-function pickHdr(row, hdrMap, ...labels) {
+function pick(row, hdrMap, ...labels) {
   for (const label of labels) {
     const key = hdrMap.get(norm(label));
     if (key && row && row[key] !== undefined && row[key] !== "") return row[key];
@@ -54,27 +53,6 @@ const toNumSafe = (v) => {
   return Number.isNaN(n) ? NaN : n;
 };
 
-// Pick first non-empty value
-const pick = (row, ...keys) => {
-  for (const k of keys) {
-    const v = row?.[k];
-    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
-  }
-  return null;
-};
-
-const toNum = (v) => {
-  const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
-  return Number.isFinite(n) ? n : NaN;
-};
-
-const toPct = (v, digits = 1) => {
-  const n = toNum(v);
-  if (!Number.isFinite(n)) return "—";
-  const clamped = Math.max(0, Math.min(1, n));
-  return `${(clamped * 100).toFixed(digits)}%`;
-};
-
 export default function DistrictDetail() {
   const { id } = useParams();
   const [row, setRow] = React.useState(null);
@@ -83,6 +61,7 @@ export default function DistrictDetail() {
 
   // campuses
   const [campuses, setCampuses] = React.useState([]);
+  const [campFields, setCampFields] = React.useState(null);
   const [campSearch, setCampSearch] = React.useState("");
 
   const [loading, setLoading] = React.useState(true);
@@ -109,14 +88,16 @@ export default function DistrictDetail() {
 
         // Campuses for this district
         try {
-          const { rows: crows } = await getCampusesForDistrict(id);
+          const { rows: crows, fields } = await getCampusesForDistrict(id);
           if (alive) {
             setCampuses(crows || []);
+            setCampFields(fields || null);
           }
         } catch (e) {
           if (alive) {
             console.warn("[Campuses] load failed:", e);
             setCampuses([]);
+            setCampFields(null);
           }
         }
       } catch (e) {
@@ -133,15 +114,15 @@ export default function DistrictDetail() {
 
   // Title prefers CSV NAME, else GeoJSON
   const displayName =
-    (row && (pickHdr(row, hdr, "NAME") || pickHdr(row, hdr, "DISTRICT", "DISTNAME"))) ||
+    (row && (pick(row, hdr, "NAME") || pick(row, hdr, "DISTRICT", "DISTNAME"))) ||
     (geom?.features?.[0]?.properties?.NAME ||
       geom?.features?.[0]?.properties?.DISTRICT ||
       geom?.features?.[0]?.properties?.DISTNAME) ||
     `District ${id}`;
-  const county = row ? pickHdr(row, hdr, "COUNTY") || "" : "";
+  const county = row ? pick(row, hdr, "COUNTY") || "" : "";
 
   // KPIs from CSV row
-  const k = (label, ...alts) => toNumSafe(pickHdr(row, hdr, label, ...alts));
+  const k = (label, ...alts) => toNumSafe(pick(row, hdr, label, ...alts));
   let totalSpending = k("Total Spending", "TOTAL_SPENDING");
   const enrollment = k("Enrollment", "ENROLLMENT", "TOTAL_ENROLLMENT", "STUDENTS");
   const perStudentCSV = k("Average Per-Student Spending", "Per-Pupil Spending", "Per Pupil Spending");
@@ -157,170 +138,31 @@ export default function DistrictDetail() {
     ? totalSpending / enrollment
     : NaN;
 
-  // campuses table rows
-  const campusRows = React.useMemo(() => {
-    const rows = (campuses || []).map((r) => {
-      // ID (link only) + name
-      const campusId = pick(
-        r,
-        "USER_School_Number",
-        "CAMPUS_N",
-        "CAMPUS_ID",
-        "Campus Number",
-        "Campus_Number",
-        "ID"
-      );
-      const campusName = pick(
-        r,
-        "USER_School_Name",
-        "CAMPUS_NAME",
-        "Campus",
-        "NAME"
-      );
+  // campuses table (search + sort by score desc)
+  const campusesSorted = React.useMemo(() => {
+    if (!campuses?.length || !campFields) return [];
+    const f = campFields;
+    const nameK = f.CAMPUS_NAME;
+    const idK = f.CAMPUS_ID;
+    const scoreK = f.CAMPUS_SCORE;
 
-      // Grade (letter)
-      const campusGrade =
-        pick(r, "Campus Grade", "CAMPUS_GRADE", "Campus_Rating", "RATING") ||
-        "—";
-
-      // Preferred: NOT-on-grade-level shares already in CSV (use directly)
-      let readingNot = pick(
-        r,
-        "Share of Students Not on Grade-Level: Reading",
-        "Reading Not on Grade-Level",
-        "READING_NOT_GL",
-        "READING_NOT_OGR"
-      );
-      let mathNot = pick(
-        r,
-        "Share of Students Not on Grade-Level: Math",
-        "Math Not on Grade-Level",
-        "MATH_NOT_GL",
-        "MATH_NOT_OGR"
-      );
-
-      // Fallback: compute 1 - OGL only if NOT-GL fields are absent
-      if (readingNot === null) {
-        const readOGL = pick(
-          r,
-          "Reading On Grade-Level",
-          "READING_OGR",
-          "READING_OGL",
-          "Reading OGL"
-        );
-        if (readOGL !== null) {
-          const n = toNum(readOGL);
-          readingNot = Number.isFinite(n)
-            ? Math.max(0, Math.min(1, 1 - n))
-            : null;
-        }
-      }
-      if (mathNot === null) {
-        const mathOGL = pick(
-          r,
-          "Math On Grade-Level",
-          "MATH_OGR",
-          "MATH_OGL",
-          "Math OGL"
-        );
-        if (mathOGL !== null) {
-          const n = toNum(mathOGL);
-          mathNot = Number.isFinite(n)
-            ? Math.max(0, Math.min(1, 1 - n))
-            : null;
-        }
-      }
-
-      // Enrollment (fix zeros by using correct field)
-      const enrollment = toNum(
-        pick(r, "Enrollment", "ENROLLMENT", "EnrolLment", "ENR", "STUDENTS")
-      );
-
-      // Optional: keep whatever else you already show (score, counts, etc.)
-      const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
-      const teachers = toNum(pick(r, "Teacher Count"));
-      const admins = toNum(pick(r, "Admin Count"));
-      const teacherSalary = toNum(pick(r, "Average Teacher Salary"));
-      const adminSalary = toNum(pick(r, "Average Admin Salary"));
-
-      return {
-        campusId,
-        campusName,
-        campusGrade,
-        campusScore: Number.isFinite(campusScore) ? campusScore : "—",
-        readingNot,
-        mathNot,
-        enrollment: Number.isFinite(enrollment) ? enrollment : null,
-        teachers,
-        admins,
-        teacherSalary,
-        adminSalary,
-      };
-    });
+    let list = campuses.map((r) => ({
+      id: idK ? String(r[idK]) : "",
+      name: nameK ? String(r[nameK]) : "",
+      score: scoreK ? toNumSafe(r[scoreK]) : NaN,
+      raw: r,
+    }));
 
     const q = campSearch.trim().toLowerCase();
-    if (q) {
-      return rows.filter(
-        (x) =>
-          String(x.campusName || "").toLowerCase().includes(q) ||
-          String(x.campusId || "").toLowerCase().includes(q)
-      );
-    }
-    return rows;
-  }, [campuses, campSearch]);
+    if (q) list = list.filter((x) => x.name.toLowerCase().includes(q) || x.id.includes(q));
 
-  const campusCols = [
-    {
-      key: "campusName",
-      label: "Campus",
-      format: (v, row) =>
-        row.campusId ? (
-          <Link
-            to={`/campus/${encodeURIComponent(row.campusId)}`}
-            className="text-indigo-700 hover:underline"
-            title={`Open ${v}`}
-          >
-            {v}
-          </Link>
-        ) : v || "—",
-    },
-    {
-      key: "campusGrade",
-      label: "Grade",
-      format: (v) => (v ? String(v).toUpperCase() : "—"),
-    },
-    { key: "campusScore", label: "Score", align: "right" },
-    {
-      key: "readingNot",
-      label: "Share of Students Not on Grade-Level: Reading",
-      align: "right",
-      format: (v) => (v === null ? "—" : toPct(v)),
-    },
-    {
-      key: "mathNot",
-      label: "Share of Students Not on Grade-Level: Math",
-      align: "right",
-      format: (v) => (v === null ? "—" : toPct(v)),
-    },
-    {
-      key: "enrollment",
-      label: "Enrollment",
-      align: "right",
-      format: (v) => (Number.isFinite(v) ? v.toLocaleString() : "—"),
-    },
-    {
-      key: "teachers",
-      label: "Teachers",
-      align: "right",
-      format: (v) => (Number.isFinite(v) ? v.toLocaleString() : "—"),
-    },
-    {
-      key: "admins",
-      label: "Admins",
-      align: "right",
-      format: (v) => (Number.isFinite(v) ? v.toLocaleString() : "—"),
-    },
-  ];
+    list.sort((a, b) => {
+      const s = (Number.isNaN(b.score) ? -Infinity : b.score) - (Number.isNaN(a.score) ? -Infinity : a.score);
+      return s || a.name.localeCompare(b.name);
+    });
+
+    return list;
+  }, [campuses, campFields, campSearch]);
 
   if (loading) return <div className="p-6">Loading…</div>;
   if (error) return <div className="p-6 text-red-700">Error: {error}</div>;
@@ -365,7 +207,7 @@ export default function DistrictDetail() {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Campuses</h2>
           <div className="text-sm text-gray-500">
-            {campusRows.length ? `${campusRows.length} campus${campusRows.length === 1 ? "" : "es"}` : "—"}
+            {campusesSorted.length ? `${campusesSorted.length} campus${campusesSorted.length === 1 ? "" : "es"}` : "—"}
           </div>
         </div>
 
@@ -376,11 +218,53 @@ export default function DistrictDetail() {
           onChange={(e) => setCampSearch(e.target.value)}
         />
 
-        <DataTable
-          columns={campusCols}
-          rows={campusRows}
-          initialSort={{ key: "campusScore", dir: "desc" }}
-        />
+        <div className="overflow-x-auto mt-4">
+          <table className="min-w-full text-sm">
+            <thead className="text-left text-gray-600 border-b">
+              <tr>
+                <th className="py-2 pr-3">Campus</th>
+                <th className="py-2 pr-3">ID</th>
+                <th className="py-2 pr-3">Score</th>
+                <th className="py-2 pr-3">Grade</th>
+                <th className="py-2 pr-3">Reading OGL</th>
+                <th className="py-2 pr-3">Math OGL</th>
+                <th className="py-2 pr-3 text-right">Teachers</th>
+                <th className="py-2 pr-3 text-right">Admins</th>
+              </tr>
+            </thead>
+            <tbody>
+              {campusesSorted.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="py-6 text-center text-gray-500">
+                    No campuses found for this district.
+                  </td>
+                </tr>
+              ) : (
+                campusesSorted.map((c, i) => {
+                  const f = campFields;
+                  const r = c.raw;
+                  const grade = f.CAMPUS_GRADE ? r[f.CAMPUS_GRADE] : "—";
+                  const read = f.READING_OGR ? r[f.READING_OGR] : "—";
+                  const math = f.MATH_OGR ? r[f.MATH_OGR] : "—";
+                  const tcnt = f.TEACHER_COUNT ? r[f.TEACHER_COUNT] : "—";
+                  const acnt = f.ADMIN_COUNT ? r[f.ADMIN_COUNT] : "—";
+                  return (
+                    <tr key={`${c.id}-${i}`} className="border-b last:border-0">
+                      <td className="py-2 pr-3 font-medium">{c.name}</td>
+                      <td className="py-2 pr-3 text-gray-600">{c.id}</td>
+                      <td className="py-2 pr-3">{Number.isNaN(c.score) ? "—" : num.format(c.score)}</td>
+                      <td className="py-2 pr-3">{grade ?? "—"}</td>
+                      <td className="py-2 pr-3">{read ?? "—"}</td>
+                      <td className="py-2 pr-3">{math ?? "—"}</td>
+                      <td className="py-2 pr-3 text-right">{tcnt ?? "—"}</td>
+                      <td className="py-2 pr-3 text-right">{acnt ?? "—"}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );

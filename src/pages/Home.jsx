@@ -4,7 +4,7 @@ import StatCard from "../ui/StatCard";
 import EntityCard from "../ui/EntityCard";
 import DataTable from "../ui/DataTable";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
-import { fetchCSV } from "../lib/staticData";
+import { loadSuperintendents, loadIndebted, loadPerformance } from "../lib/homeData";
 import TexasMap from "../components/TexasMap";
 
 const fmtInt = (n) =>
@@ -20,6 +20,15 @@ const fmtMoney = (n) =>
         maximumFractionDigits: 0,
       }).format(n)
     : "—";
+
+const scoreToGrade = (n) => {
+  if (!Number.isFinite(n)) return "—";
+  if (n >= 90) return "A";
+  if (n >= 80) return "B";
+  if (n >= 70) return "C";
+  if (n >= 60) return "D";
+  return "F";
+};
 
 export default function Home() {
   const [stats, setStats] = useState(null);
@@ -45,23 +54,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [d, p, s] = await Promise.all([
-          fetchCSV("/data/home/indebted.csv"),
-          fetchCSV("/data/home/performance.csv"),
-          fetchCSV("/data/home/superintendents.csv"),
-        ]);
-        setIndebted(d.slice(0, 10));
-        setPerformance(p.slice(0, 10));
-        setSuperintendents(s.slice(0, 10));
-      } catch (e) {
-        console.error("Failed to load home tables:", e);
-        setIndebted([]);
-        setPerformance([]);
-        setSuperintendents([]);
-      }
-    })();
+    loadIndebted().then(setIndebted).catch(() => setIndebted([]));
+    loadPerformance().then(setPerformance).catch(() => setPerformance([]));
+    loadSuperintendents().then(setSuperintendents).catch(() => setSuperintendents([]));
   }, []);
 
   const debtCols = [
@@ -83,11 +78,14 @@ export default function Home() {
     },
   ];
 
-  const debtRows = indebted.map((r) => ({
-    id: r.DISTRICT_N,
-    name: r.NAME,
-    debt: Number(String(r.Debt).replace(/[\$,]/g, "")),
-    perDebt: Number(String(r["Per-Pupil Debt"]).replace(/[\$,]/g, "")),
+  const debtRows = indebted.slice(0, 10).map((r) => ({
+    id: r.id,
+    name: r.name,
+    debt: r.debt,
+    perDebt:
+      Number.isFinite(r.debt) && Number.isFinite(r.enroll) && r.enroll > 0
+        ? r.debt / r.enroll
+        : NaN,
   }));
 
   const perfCols = [
@@ -104,11 +102,11 @@ export default function Home() {
     { key: "score", label: "Score", align: "right" },
   ];
 
-  const perfRows = performance.map((r) => ({
-    id: r.DISTRICT_N,
-    name: r.NAME,
-    grade: r.DISTRICT_GRADE,
-    score: Number(r.DISTRICT_SCORE),
+  const perfRows = performance.slice(0, 10).map((r) => ({
+    id: r.id,
+    name: r.name,
+    grade: scoreToGrade(r.score),
+    score: r.score,
   }));
 
   const supCols = [
@@ -136,12 +134,12 @@ export default function Home() {
     },
   ];
 
-  const supRows = superintendents.map((r) => ({
-    id: r.DISTRICT_N,
-    district: r.DISTRICT_NAME,
-    superintendent: r.SUPERINTENDENT_NAME,
-    salary: Number(String(r.FTE_SALARY).replace(/[\$,]/g, "")),
-    enrollment: Number(r.ENROLLMENT),
+  const supRows = superintendents.slice(0, 10).map((r) => ({
+    id: r.id,
+    district: r.name,
+    superintendent: r.supName,
+    salary: r.fteSalary,
+    enrollment: r.enroll,
   }));
 
   return (
