@@ -275,11 +275,13 @@ export default function Home() {
           <button
             onClick={requestLocation}
             disabled={geoBusy}
-            className={`px-3 py-1.5 rounded-md border text-sm ${
-              geoBusy ? "opacity-60 cursor-not-allowed" : "hover:bg-gray-50"
+            className={`font-bold text-base md:text-lg px-4 py-2 rounded-md ${
+              geoBusy
+                ? "opacity-60 cursor-not-allowed bg-gray-300"
+                : "bg-indigo-600 text-white hover:bg-indigo-700"
             }`}
           >
-            {geoBusy ? "Locating…" : "Use my location"}
+            {geoBusy ? "Locating…" : "Use My Location"}
           </button>
         </div>
         {geoMsg && <div className="text-xs text-gray-500">{geoMsg}</div>}
