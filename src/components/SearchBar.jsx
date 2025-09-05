@@ -56,6 +56,7 @@ export default function SearchBar() {
       if (!term) {
         setSuggestions([]);
         setActive(0);
+        setOpen(false);
         return;
       }
       const match = list => list.filter(x => x.name.toLowerCase().includes(term));
@@ -63,6 +64,7 @@ export default function SearchBar() {
       const c = match(campuses).slice(0, 6).map(x => ({ ...x, type: "campus" }));
       setSuggestions([...d, ...c]);
       setActive(0);
+      setOpen(true);
     }, DEBOUNCE_MS);
     return () => timer.current && clearTimeout(timer.current);
   }, [q, districts, campuses]);
@@ -110,7 +112,8 @@ export default function SearchBar() {
     <div ref={boxRef} className="relative w-full" role="combobox" aria-expanded={open}>
       <input
         value={q}
-        onChange={e => { setQ(e.target.value); setOpen(true); }}
+        onChange={e => setQ(e.target.value)}
+        onFocus={() => q && setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder="Search district or campus"
         className="w-full rounded-md bg-gray-50 border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -126,6 +129,7 @@ export default function SearchBar() {
             <li
               key={`${s.type}-${s.id}`}
               onMouseEnter={() => setActive(i)}
+              onMouseDown={e => e.preventDefault()}
               onClick={() => go(s)}
               className={`px-3 py-2 cursor-pointer ${i === active ? "bg-indigo-50" : ""}`}
               role="option"
