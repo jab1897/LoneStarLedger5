@@ -4,7 +4,7 @@ import StatCard from "../ui/StatCard";
 import EntityCard from "../ui/EntityCard";
 import DataTable from "../ui/DataTable";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
-import { fetchCSV } from "../lib/staticData";
+import { loadSuperintendents, loadIndebted, loadPerformance } from "../lib/homeData";
 import TexasMap from "../components/TexasMap";
 
 const fmtInt = (n) =>
@@ -21,11 +21,49 @@ const fmtMoney = (n) =>
       }).format(n)
     : "—";
 
+const scoreToGrade = (n) => {
+  if (!Number.isFinite(n)) return "—";
+  if (n >= 90) return "A";
+  if (n >= 80) return "B";
+  if (n >= 70) return "C";
+  if (n >= 60) return "D";
+  return "F";
+};
+
 export default function Home() {
   const [stats, setStats] = useState(null);
   const [indebted, setIndebted] = useState([]);
   const [performance, setPerformance] = useState([]);
   const [superintendents, setSuperintendents] = useState([]);
+
+  const [userLoc, setUserLoc] = useState(null);
+  const [geoBusy, setGeoBusy] = useState(false);
+  const [geoMsg, setGeoMsg] = useState(null);
+
+  const requestLocation = () => {
+    if (!("geolocation" in navigator)) {
+      setGeoMsg("Location services are unavailable in this browser.");
+      return;
+    }
+    setGeoBusy(true);
+    setGeoMsg(null);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords || {};
+        if (typeof latitude === "number" && typeof longitude === "number") {
+          setUserLoc({ lat: latitude, lng: longitude });
+        } else {
+          setGeoMsg("Could not read your device location.");
+        }
+        setGeoBusy(false);
+      },
+      (err) => {
+        setGeoMsg(err?.message || "Location permission was denied.");
+        setGeoBusy(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
 
   useEffect(() => {
     (async () => {
@@ -45,23 +83,9 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [d, p, s] = await Promise.all([
-          fetchCSV("/data/home/indebted.csv"),
-          fetchCSV("/data/home/performance.csv"),
-          fetchCSV("/data/home/superintendents.csv"),
-        ]);
-        setIndebted(d.slice(0, 10));
-        setPerformance(p.slice(0, 10));
-        setSuperintendents(s.slice(0, 10));
-      } catch (e) {
-        console.error("Failed to load home tables:", e);
-        setIndebted([]);
-        setPerformance([]);
-        setSuperintendents([]);
-      }
-    })();
+    loadIndebted().then(setIndebted).catch(() => setIndebted([]));
+    loadPerformance().then(setPerformance).catch(() => setPerformance([]));
+    loadSuperintendents().then(setSuperintendents).catch(() => setSuperintendents([]));
   }, []);
 
   const debtCols = [
@@ -83,11 +107,11 @@ export default function Home() {
     },
   ];
 
-  const debtRows = indebted.map((r) => ({
-    id: r.DISTRICT_N,
-    name: r.NAME,
-    debt: Number(String(r.Debt).replace(/[\$,]/g, "")),
-    perDebt: Number(String(r["Per-Pupil Debt"]).replace(/[\$,]/g, "")),
+  const debtRows = indebted.slice(0, 10).map((r) => ({
+    id: r.id,
+    name: r.name,
+    debt: r.debt,
+    perDebt: r.perDebt,
   }));
 
   const perfCols = [
@@ -104,11 +128,11 @@ export default function Home() {
     { key: "score", label: "Score", align: "right" },
   ];
 
-  const perfRows = performance.map((r) => ({
-    id: r.DISTRICT_N,
-    name: r.NAME,
-    grade: r.DISTRICT_GRADE,
-    score: Number(r.DISTRICT_SCORE),
+  const perfRows = performance.slice(0, 10).map((r) => ({
+    id: r.id,
+    name: r.name,
+    grade: scoreToGrade(r.score),
+    score: r.score,
   }));
 
   const supCols = [
@@ -136,12 +160,12 @@ export default function Home() {
     },
   ];
 
-  const supRows = superintendents.map((r) => ({
-    id: r.DISTRICT_N,
-    district: r.DISTRICT_NAME,
-    superintendent: r.SUPERINTENDENT_NAME,
-    salary: Number(String(r.FTE_SALARY).replace(/[\$,]/g, "")),
-    enrollment: Number(r.ENROLLMENT),
+  const supRows = superintendents.slice(0, 10).map((r) => ({
+    id: r.id,
+    district: r.name,
+    superintendent: r.supName,
+    salary: r.fteSalary,
+    enrollment: r.enroll,
   }));
 
   return (
@@ -167,8 +191,25 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 👇 Add the map back here */}
-      <TexasMap />
+      {/* 👇 Map with geolocation control */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-600">Center the map on your current location (Texas only).</div>
+          <button
+            onClick={requestLocation}
+            disabled={geoBusy}
+            className={`font-bold text-base md:text-lg px-4 py-2 rounded-md ${
+              geoBusy
+                ? "opacity-60 cursor-not-allowed bg-gray-300"
+                : "bg-indigo-600 text-white hover:bg-indigo-700"
+            }`}
+          >
+            {geoBusy ? "Locating…" : "Use My Location"}
+          </button>
+        </div>
+        {geoMsg && <div className="text-xs text-gray-500">{geoMsg}</div>}
+        <TexasMap userLocation={userLoc} userZoom={12} />
+      </section>
 
       {/* Home tables */}
       <section className="space-y-8">
