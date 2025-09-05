@@ -131,6 +131,16 @@ export default function DistrictDetail() {
   const teacherSalary = k("Average Teacher Salary", "TEACHER_SALARY");
   const principalSal = k("Average Principal Salary", "PRINCIPAL_SALARY");
   const superSalary = k("Superintendent Salary", "SUPERINTENDENT_SALARY");
+  const districtGrade = pick(row, hdr, "District grade", "DISTRICT_GRADE", "GRADE");
+  const districtScore = k("District score", "DISTRICT_SCORE", "SCORE", "OVERALL_SCORE");
+  const rating = (() => {
+    const g = districtGrade;
+    const s = districtScore;
+    if (!g && Number.isNaN(s)) return "—";
+    if (g && !Number.isNaN(s)) return `${g} (${num.format(s)})`;
+    if (g) return g;
+    return num.format(s);
+  })();
 
   const perStudent = !Number.isNaN(perStudentCSV)
     ? perStudentCSV
@@ -185,6 +195,7 @@ export default function DistrictDetail() {
           </div>
 
           <div className="flex flex-wrap gap-2">
+            <StatPill label="Rating" value={rating} />
             <StatPill label="Enrollment" value={Number.isNaN(enrollment) ? "—" : num.format(enrollment)} />
             <StatPill label="Per pupil" value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
             <StatPill label="Total spend" value={Number.isNaN(totalSpending) ? "—" : usd.format(totalSpending)} />
