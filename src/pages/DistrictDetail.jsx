@@ -142,6 +142,23 @@ export default function DistrictDetail() {
     return num.format(s);
   })();
 
+  const gradeColor = (g) => {
+    switch (String(g || "").toUpperCase()) {
+      case "A":
+        return "bg-green-700 text-white";
+      case "B":
+        return "bg-green-300 text-gray-900";
+      case "C":
+        return "bg-yellow-300 text-gray-900";
+      case "D":
+        return "bg-amber-400 text-white";
+      case "F":
+        return "bg-red-600 text-white";
+      default:
+        return "bg-gray-300 text-gray-800";
+    }
+  };
+
   const perStudent = !Number.isNaN(perStudentCSV)
     ? perStudentCSV
     : !Number.isNaN(totalSpending) && !Number.isNaN(enrollment) && enrollment > 0
@@ -191,11 +208,15 @@ export default function DistrictDetail() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
+            {rating !== "—" && (
+              <span className={`inline-block mt-2 rounded-full px-3 py-1 text-sm font-semibold ${gradeColor(districtGrade)}`}>
+                {rating}
+              </span>
+            )}
             <p className="text-gray-600 mt-1">{county}</p>
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <StatPill label="Rating" value={rating} />
             <StatPill label="Enrollment" value={Number.isNaN(enrollment) ? "—" : num.format(enrollment)} />
             <StatPill label="Per pupil" value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
             <StatPill label="Total spend" value={Number.isNaN(totalSpending) ? "—" : usd.format(totalSpending)} />
