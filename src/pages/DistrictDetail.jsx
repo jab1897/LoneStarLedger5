@@ -54,15 +54,6 @@ const toNumSafe = (v) => {
   return Number.isNaN(n) ? NaN : n;
 };
 
-// First non-empty from keys
-const pick = (row, ...keys) => {
-  for (const k of keys) {
-    const v = row?.[k];
-    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
-  }
-  return null;
-};
-
 const toNum = (v) => {
   const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : NaN;
@@ -83,6 +74,7 @@ export default function DistrictDetail() {
 
   // campuses
   const [campuses, setCampuses] = React.useState([]);
+  const [campFields, setCampFields] = React.useState(null);
   const [campSearch, setCampSearch] = React.useState("");
 
   const [loading, setLoading] = React.useState(true);
@@ -109,14 +101,16 @@ export default function DistrictDetail() {
 
         // Campuses for this district
         try {
-          const { rows: crows } = await getCampusesForDistrict(id);
+          const { rows: crows, fields: cfields } = await getCampusesForDistrict(id);
           if (alive) {
             setCampuses(crows || []);
+            setCampFields(cfields || null);
           }
         } catch (e) {
           if (alive) {
             console.warn("[Campuses] load failed:", e);
             setCampuses([]);
+            setCampFields(null);
           }
         }
       } catch (e) {
@@ -158,79 +152,30 @@ export default function DistrictDetail() {
     : NaN;
 
   // campuses table rows
-  const campusRows = React.useMemo(
-    () =>
-      (campuses || []).map((r) => {
-        const campusId = pick(
-          r,
-          "USER_School_Number",
-          "CAMPUS_N",
-          "CAMPUS_ID",
-          "Campus Number",
-          "Campus_Number",
-          "ID"
-        );
-
-        const campusName = pick(r, "USER_School_Name", "CAMPUS_NAME", "Campus", "NAME");
-        const campusGrade =
-          pick(r, "Campus Grade", "CAMPUS_GRADE", "Campus_Rating", "RATING") || "—";
-        const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
-
-        let readingNot = pick(
-          r,
-          "Share of Students Not on Grade-Level: Reading",
-          "Reading Not on Grade-Level",
-          "READING_NOT_GL",
-          "READING_NOT_OGR"
-        );
-        let mathNot = pick(
-          r,
-          "Share of Students Not on Grade-Level: Math",
-          "Math Not on Grade-Level",
-          "MATH_NOT_GL",
-          "MATH_NOT_OGR"
-        );
-
-        if (readingNot === null) {
-          const readOGL = pick(
-            r,
-            "Reading On Grade-Level",
-            "READING_OGR",
-            "READING_OGL",
-            "Reading OGL"
-          );
-          if (readOGL !== null) {
-            const n = toNum(readOGL);
-            readingNot = Number.isFinite(n) ? Math.max(0, Math.min(1, 1 - n)) : null;
-          }
-        }
-        if (mathNot === null) {
-          const mathOGL = pick(
-            r,
-            "Math On Grade-Level",
-            "MATH_OGR",
-            "MATH_OGL",
-            "Math OGL"
-          );
-          if (mathOGL !== null) {
-            const n = toNum(mathOGL);
-            mathNot = Number.isFinite(n) ? Math.max(0, Math.min(1, 1 - n)) : null;
-          }
-        }
-
-        return {
-          campusId,
-          campusName,
-          campusGrade,
-          campusScore: Number.isFinite(campusScore) ? campusScore : NaN,
-          readingNot,
-          mathNot,
-          teachers: toNum(r["Teacher Count"]),
-          admins: toNum(r["Admin Count"]),
-        };
-      }),
-    [campuses]
-  );
+  const campusRows = React.useMemo(() => {
+    if (!campuses || !campFields) return [];
+    const f = campFields;
+    return campuses.map((r) => {
+      const campusId = f.CAMPUS_ID ? r[f.CAMPUS_ID] : "";
+      const campusName = f.CAMPUS_NAME ? r[f.CAMPUS_NAME] : "";
+      const campusGrade = f.CAMPUS_GRADE ? r[f.CAMPUS_GRADE] : "—";
+      const campusScore = f.CAMPUS_SCORE ? toNumSafe(r[f.CAMPUS_SCORE]) : NaN;
+      const readingOgl = f.READING_OGR ? toNumSafe(r[f.READING_OGR]) : NaN;
+      const mathOgl = f.MATH_OGR ? toNumSafe(r[f.MATH_OGR]) : NaN;
+      const teachers = f.TEACHER_COUNT ? toNumSafe(r[f.TEACHER_COUNT]) : NaN;
+      const admins = f.ADMIN_COUNT ? toNumSafe(r[f.ADMIN_COUNT]) : NaN;
+      return {
+        campusId,
+        campusName,
+        campusGrade,
+        campusScore: Number.isFinite(campusScore) ? campusScore : NaN,
+        readingOgl: Number.isFinite(readingOgl) ? readingOgl : null,
+        mathOgl: Number.isFinite(mathOgl) ? mathOgl : null,
+        teachers,
+        admins,
+      };
+    });
+  }, [campuses, campFields]);
 
   const filteredCampuses = React.useMemo(() => {
     const q = campSearch.trim().toLowerCase();
@@ -261,25 +206,29 @@ export default function DistrictDetail() {
         ) : v || "—",
     },
     {
-      key: "campusGrade",
-      label: "Grade",
-      format: (v) => (v ? String(v).toUpperCase() : "—"),
-    },
-    {
       key: "campusScore",
       label: "Score",
       align: "right",
       format: (v) => (Number.isFinite(v) ? num.format(v) : "—"),
     },
     {
-      key: "readingNot",
-      label: "Reading Not On Grade-Level",
+      key: "campusGrade",
+      label: "Grade",
+      format: (v) => {
+        if (!v) return "—";
+        const g = String(v).toUpperCase();
+        return g === "NR" ? "Not Rated" : g;
+      },
+    },
+    {
+      key: "readingOgl",
+      label: "Reading OGL",
       align: "right",
       format: (v) => (v == null ? "—" : toPct(v)),
     },
     {
-      key: "mathNot",
-      label: "Math Not On Grade-Level",
+      key: "mathOgl",
+      label: "Math OGL",
       align: "right",
       format: (v) => (v == null ? "—" : toPct(v)),
     },
