@@ -44,7 +44,6 @@ export default function Home() {
           getStatewideStats(districtsCsv),
           getDetectedFields(districtsCsv),
         ]);
-        console.table(fields); // Inspect which headers were used
         setStats(s);
       } catch (e) {
         console.error("Failed to load statewide stats:", e);
@@ -78,7 +77,11 @@ export default function Home() {
     },
   ];
 
-  const debtRows = indebted.slice(0, 10).map((r) => ({
+  const debtRows = indebted
+    .slice()
+    .sort((a, b) => b.debt - a.debt)
+    .slice(0, 10)
+    .map((r) => ({
     id: r.id,
     name: r.name,
     debt: r.debt,
@@ -102,7 +105,11 @@ export default function Home() {
     { key: "score", label: "Score", align: "right" },
   ];
 
-  const perfRows = performance.slice(0, 10).map((r) => ({
+  const perfRows = performance
+    .slice()
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 10)
+    .map((r) => ({
     id: r.id,
     name: r.name,
     grade: scoreToGrade(r.score),
@@ -179,11 +186,11 @@ export default function Home() {
           />
         </div>
         <div>
-          <h2 className="text-xl font-bold mb-2">Top Performing Districts</h2>
+          <h2 className="text-xl font-bold mb-2">Worst Performing Districts</h2>
           <DataTable
             columns={perfCols}
             rows={perfRows}
-            initialSort={{ key: "score", dir: "desc" }}
+            initialSort={{ key: "score", dir: "asc" }}
           />
         </div>
         <div>

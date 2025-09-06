@@ -101,7 +101,14 @@ export async function loadIndebted(){
     const id   = r.DISTRICT_N ?? r.DISTRICT_ID ?? r.DISTRICT_NUMBER ?? r.ID;
     const name = r.DISTRICT_NAME ?? r.NAME ?? r.DNAME ?? "";
     const enroll = num(r.ENROLLMENT ?? r.Enrollment ?? r.ENR ?? r.STUDENTS);
-    const debt = num(r.DEBT_PER_STUDENT ?? r["Per-Pupil Debt"] ?? r.TOTAL_DEBT ?? r.DEBT ?? r.DEBT_TOTAL);
+
+    // prefer explicit total-debt columns; fall back to per‑pupil debt * enrollment
+    let debt = num(r.TOTAL_DEBT ?? r.DEBT ?? r.DEBT_TOTAL ?? r.Debt ?? r["Debt"]);
+    const perDebt = num(r.DEBT_PER_STUDENT ?? r["Per-Pupil Debt"] ?? r.PER_PUPIL_DEBT);
+    if (!Number.isFinite(debt) && Number.isFinite(perDebt) && Number.isFinite(enroll) && enroll > 0) {
+      debt = perDebt * enroll;
+    }
+
     return { id, name, enroll, debt };
   }).filter(d => d.id && d.name && Number.isFinite(d.debt));
 
