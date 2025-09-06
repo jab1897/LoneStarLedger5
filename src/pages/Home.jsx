@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import StatCard from "../ui/StatCard";
-import EntityCard from "../ui/EntityCard";
 import DataTable from "../ui/DataTable";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
 import { loadSuperintendents, loadIndebted, loadPerformance } from "../lib/homeData";
@@ -195,20 +194,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Recently viewed */}
-      <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Recently viewed</h2>
-          <Link to="/districts" className="text-sm text-blue-700 hover:underline">
-            See all
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <EntityCard title="Austin ISD" subtitle="Travis County" tags={["Large","Urban"]} to="/district/227901" />
-          <EntityCard title="Northside ISD" subtitle="Bexar County" tags={["Large","Urban"]} to="/district/015915" />
-          <EntityCard title="Sharyland ISD" subtitle="Hidalgo County" tags={["Mid","Suburban"]} to="/district/108911" />
-        </div>
-      </section>
     </div>
   );
 }
