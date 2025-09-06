@@ -151,12 +151,19 @@ export async function loadPerformance(){
     return { id, name, score, grade, enroll };
   }).filter(d => d.id && d.name && (Number.isFinite(d.score) || d.grade));
 
+  const ranked = rows
+    .filter((d) => {
+      const g = String(d.grade ?? "").trim().toUpperCase();
+      return Number.isFinite(d.score) && d.score > 0 && g !== "NR" && g !== "NOT RATED";
+    })
+    .sort((a, b) => a.score - b.score);
+
   if (debugOn()) {
     console.info("[home.performance]", {
-      headers: parsed.headers, first: parsed.rows[0], mapped: rows.length
+      headers: parsed.headers, first: parsed.rows[0], mapped: ranked.length
     });
   }
-  return rows;
+  return ranked;
 }
 
 // Enrollment buckets & formatters (already used by HomeCharts)

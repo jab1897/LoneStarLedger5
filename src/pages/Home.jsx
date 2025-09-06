@@ -178,11 +178,11 @@ export default function Home() {
           />
         </div>
         <div>
-          <h2 className="text-xl font-bold mb-2">Top Performing Districts</h2>
+          <h2 className="text-xl font-bold mb-2">Worst Performing Districts</h2>
           <DataTable
             columns={perfCols}
             rows={perfRows}
-            initialSort={{ key: "score", dir: "desc" }}
+            initialSort={{ key: "score", dir: "asc" }}
           />
         </div>
         <div>
