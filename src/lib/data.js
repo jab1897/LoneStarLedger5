@@ -58,13 +58,12 @@ function pickKey(row, candidates) {
   return null;
 }
 
-let _cache = null;
+const _cache = new Map();
 
 export async function loadDistrictsCSV(csvUrl) {
-  if (_cache) return _cache;
-
   const url = csvUrl || import.meta.env.VITE_DISTRICTS_CSV;
   if (!url) throw new Error("VITE_DISTRICTS_CSV is not set");
+  if (_cache.has(url)) return _cache.get(url);
 
   const text = await fetch(url, { cache: "force-cache" }).then((r) => {
     if (!r.ok) throw new Error(`Failed to fetch CSV: ${r.status}`);
@@ -88,8 +87,9 @@ export async function loadDistrictsCSV(csvUrl) {
   });
 
   if (!rows.length) {
-    _cache = emptyResult();
-    return _cache;
+    const empty = emptyResult();
+    _cache.set(url, empty);
+    return empty;
   }
 
   // Detect headers with a representative row
@@ -185,7 +185,7 @@ export async function loadDistrictsCSV(csvUrl) {
   // Fixed value per your spec
   const perStudentSpendingAvgFixed = 18125;
 
-  _cache = {
+  const result = {
     rows,
     byId,
     counties: Array.from(countiesSet).sort(),
@@ -207,7 +207,8 @@ export async function loadDistrictsCSV(csvUrl) {
       superintendentSalaryAvg,
     },
   };
-  return _cache;
+  _cache.set(url, result);
+  return result;
 }
 
 function emptyResult() {

@@ -20,13 +20,12 @@ const pickKey = (row, candidates) => {
   return null;
 };
 
-let _cache = null;
+const _cache = new Map();
 
 export async function loadSpendingCSV(csvUrl) {
-  if (_cache) return _cache;
-
   const url = csvUrl || import.meta.env.VITE_SPENDING_CSV;
   if (!url) throw new Error("VITE_SPENDING_CSV is not set");
+  if (_cache.has(url)) return _cache.get(url);
 
   const text = await fetch(url, { cache: "force-cache" }).then((r) => {
     if (!r.ok) throw new Error(`Failed to fetch spending CSV: ${r.status}`);
@@ -84,8 +83,9 @@ export async function loadSpendingCSV(csvUrl) {
     new Set(normalized.map((r) => r.category).filter(Boolean))
   ).sort();
 
-  _cache = { raw: rows, records: normalized, byDistrict, categories, fields: F };
-  return _cache;
+  const result = { raw: rows, records: normalized, byDistrict, categories, fields: F };
+  _cache.set(url, result);
+  return result;
 }
 
 export async function getSpendingForDistrict(districtId) {
