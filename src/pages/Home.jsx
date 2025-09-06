@@ -107,12 +107,15 @@ export default function Home() {
     },
   ];
 
-  const debtRows = indebted.slice(0, 10).map((r) => ({
-    id: r.id,
-    name: r.name,
-    debt: r.debt,
-    perDebt: r.perDebt,
-  }));
+  const debtRows = [...indebted]
+    .sort((a, b) => b.debt - a.debt)
+    .slice(0, 10)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      debt: r.debt,
+      perDebt: r.perDebt,
+    }));
 
   const perfCols = [
     {
@@ -128,12 +131,15 @@ export default function Home() {
     { key: "score", label: "Score", align: "right" },
   ];
 
-  const perfRows = performance.slice(0, 10).map((r) => ({
-    id: r.id,
-    name: r.name,
-    grade: scoreToGrade(r.score),
-    score: r.score,
-  }));
+  const perfRows = [...performance]
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 10)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      grade: scoreToGrade(r.score),
+      score: r.score,
+    }));
 
   const supCols = [
     {
@@ -222,11 +228,11 @@ export default function Home() {
           />
         </div>
         <div>
-          <h2 className="text-xl font-bold mb-2">Top Performing Districts</h2>
+          <h2 className="text-xl font-bold mb-2">Worst Performing Districts</h2>
           <DataTable
             columns={perfCols}
             rows={perfRows}
-            initialSort={{ key: "score", dir: "desc" }}
+            initialSort={{ key: "score", dir: "asc" }}
           />
         </div>
         <div>

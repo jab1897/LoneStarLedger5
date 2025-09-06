@@ -75,6 +75,23 @@ const toPct = (v, digits = 1) => {
   return `${(clamped * 100).toFixed(digits)}%`;
 };
 
+const gradeColor = (g) => {
+  switch (String(g || "").toUpperCase()) {
+    case "A":
+      return "bg-green-800";
+    case "B":
+      return "bg-emerald-800";
+    case "C":
+      return "bg-amber-700";
+    case "D":
+      return "bg-orange-700";
+    case "F":
+      return "bg-red-800";
+    default:
+      return "bg-gray-700";
+  }
+};
+
 export default function DistrictDetail() {
   const { id } = useParams();
   const [row, setRow] = React.useState(null);
@@ -157,6 +174,48 @@ export default function DistrictDetail() {
     ? totalSpending / enrollment
     : NaN;
 
+  // Resolve district-level score/grade; fallback to campus average if needed
+  const dsRaw = toNum(
+    pick(
+      row,
+      "Overall Score",
+      "District Score",
+      "SCORE",
+      "OVERALL_SCORE",
+      "Overall Scaled Score",
+      "Scaled Score"
+    )
+  );
+  const dgRaw = pick(
+    row,
+    "Overall Grade",
+    "District Grade",
+    "GRADE",
+    "RATING",
+    "OVERALL_GRADE",
+    "Accountability Rating"
+  );
+  let ribbonScore = Number.isFinite(dsRaw) ? Math.round(dsRaw) : NaN;
+  if (!Number.isFinite(ribbonScore) && Array.isArray(campuses) && campuses.length) {
+    const nums = campuses
+      .map((c) => toNum(c?.score ?? c?.["Campus Score"]))
+      .filter(Number.isFinite);
+    if (nums.length) ribbonScore = Math.round(nums.reduce((a, b) => a + b, 0) / nums.length);
+  }
+  let ribbonGrade = dgRaw
+    ? String(dgRaw).trim().toUpperCase()
+    : Number.isFinite(ribbonScore)
+    ? ribbonScore >= 90
+      ? "A"
+      : ribbonScore >= 80
+      ? "B"
+      : ribbonScore >= 70
+      ? "C"
+      : ribbonScore >= 60
+      ? "D"
+      : "F"
+    : null;
+
   // campuses table rows
   const campusRows = React.useMemo(
     () =>
@@ -218,6 +277,10 @@ export default function DistrictDetail() {
           }
         }
 
+        const enrollment = toNum(
+          pick(r, "Enrollment", "ENROLLMENT", "EnrolLment", "ENR", "STUDENTS")
+        );
+
         return {
           campusId,
           campusName,
@@ -225,6 +288,7 @@ export default function DistrictDetail() {
           campusScore: Number.isFinite(campusScore) ? campusScore : NaN,
           readingNot,
           mathNot,
+          enrollment: Number.isFinite(enrollment) ? enrollment : null,
           teachers: toNum(r["Teacher Count"]),
           admins: toNum(r["Admin Count"]),
         };
@@ -284,6 +348,12 @@ export default function DistrictDetail() {
       format: (v) => (v == null ? "—" : toPct(v)),
     },
     {
+      key: "enrollment",
+      label: "Enrollment",
+      align: "right",
+      format: (v) => (Number.isFinite(v) ? v.toLocaleString() : "—"),
+    },
+    {
       key: "teachers",
       label: "Teachers",
       align: "right",
@@ -314,6 +384,25 @@ export default function DistrictDetail() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
+            {(ribbonGrade || Number.isFinite(ribbonScore)) && (
+              <div className="mt-2">
+                <span
+                  className={[
+                    "inline-flex items-center gap-4 rounded-2xl px-5 py-2 text-3xl font-extrabold leading-none text-white shadow ring-1 ring-black/10",
+                    gradeColor(ribbonGrade),
+                  ].join(" ")}
+                  title={`TEA rating ${ribbonGrade || "—"}${
+                    Number.isFinite(ribbonScore) ? ` • score ${ribbonScore}` : ""
+                  }`}
+                >
+                  <span className="tracking-tight">{ribbonGrade || "—"}</span>
+                  <span className="opacity-90">•</span>
+                  <span className="tracking-tight">
+                    {Number.isFinite(ribbonScore) ? ribbonScore : "—"}
+                  </span>
+                </span>
+              </div>
+            )}
             <p className="text-gray-600 mt-1">{county}</p>
           </div>
 

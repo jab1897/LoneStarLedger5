@@ -108,7 +108,7 @@ export async function loadIndebted(){
       perDebt = totalDebt / enroll;
     }
     return { id, name, enroll, debt: totalDebt, perDebt };
-  }).filter(d => d.id && d.name && (Number.isFinite(d.debt) || Number.isFinite(d.perDebt)));
+  }).filter(d => d.id && d.name);
 
   if (debugOn()) {
     console.info("[home.indebted]", {
