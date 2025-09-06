@@ -79,10 +79,7 @@ export default function Home() {
     id: r.id,
     name: r.name,
     debt: r.debt,
-    perDebt:
-      Number.isFinite(r.debt) && Number.isFinite(r.enroll) && r.enroll > 0
-        ? r.debt / r.enroll
-        : NaN,
+    perDebt: r.perDebt,
   }));
 
   const perfCols = [

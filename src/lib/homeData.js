@@ -91,7 +91,7 @@ export async function loadSuperintendents(){
   return rows;
 }
 
-// 2) Indebted table: id, name, debt metric, enroll
+// 2) Indebted table: id, name, total debt, per-pupil debt, enroll
 export async function loadIndebted(){
   const text = await fetchPublic("/data/home/indebted.csv");
   if(!text) return [];
@@ -101,9 +101,17 @@ export async function loadIndebted(){
     const id   = r.DISTRICT_N ?? r.DISTRICT_ID ?? r.DISTRICT_NUMBER ?? r.ID;
     const name = r.DISTRICT_NAME ?? r.NAME ?? r.DNAME ?? "";
     const enroll = num(r.ENROLLMENT ?? r.Enrollment ?? r.ENR ?? r.STUDENTS);
-    const debt = num(r.DEBT_PER_STUDENT ?? r["Per-Pupil Debt"] ?? r.TOTAL_DEBT ?? r.DEBT ?? r.DEBT_TOTAL);
-    return { id, name, enroll, debt };
+    const debtKey = firstKey(r, ["Debt", "TOTAL_DEBT", "DEBT", "DEBT_TOTAL"]);
+    const perKey  = firstKey(r, ["Per-Pupil Debt", "DEBT_PER_STUDENT", "PER_PUPIL_DEBT", "DEBT_PER_PUPIL"]);
+    const debt = num(r[debtKey]);
+    let perDebt = num(r[perKey]);
+    if(!Number.isFinite(perDebt) && Number.isFinite(debt) && Number.isFinite(enroll) && enroll>0){
+      perDebt = debt / enroll;
+    }
+    return { id, name, debt, perDebt, enroll };
   }).filter(d => d.id && d.name && Number.isFinite(d.debt));
+
+  rows.sort((a,b)=>b.debt - a.debt);
 
   if (debugOn()) {
     console.info("[home.indebted]", {
