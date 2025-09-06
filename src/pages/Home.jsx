@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react"; 
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import StatCard from "../ui/StatCard";
 import EntityCard from "../ui/EntityCard";
@@ -21,13 +21,10 @@ const fmtMoney = (n) =>
       }).format(n)
     : "—";
 
-const scoreToGrade = (n) => {
-  if (!Number.isFinite(n)) return "—";
-  if (n >= 90) return "A";
-  if (n >= 80) return "B";
-  if (n >= 70) return "C";
-  if (n >= 60) return "D";
-  return "F";
+const displayGrade = (g) => {
+  const s = String(g ?? "").trim();
+  if (!s) return "—";
+  return s.toLowerCase() === "nr" ? "Not Rated" : s;
 };
 
 export default function Home() {
@@ -99,13 +96,18 @@ export default function Home() {
       ),
     },
     { key: "grade", label: "Grade" },
-    { key: "score", label: "Score", align: "right" },
+    {
+      key: "score",
+      label: "Score",
+      align: "right",
+      format: (v) => (Number.isFinite(v) ? v : "—"),
+    },
   ];
 
   const perfRows = performance.slice(0, 10).map((r) => ({
     id: r.id,
     name: r.name,
-    grade: scoreToGrade(r.score),
+    grade: displayGrade(r.grade),
     score: r.score,
   }));
 

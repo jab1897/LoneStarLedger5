@@ -123,13 +123,25 @@ export async function loadPerformance(){
     const id   = r.DISTRICT_N ?? r.DISTRICT_ID ?? r.DISTRICT_NUMBER ?? r.ID;
     const name = r.DISTRICT_NAME ?? r.NAME ?? r.DNAME ?? "";
     const enroll = num(r.ENROLLMENT ?? r.Enrollment ?? r.ENR ?? r.STUDENTS);
-    let score = num(r.OVERALL_SCORE ?? r.SCORE ?? r.ACCOUNTABILITY_SCORE);
+    let score = num(
+      r.DISTRICT_SCORE ?? r.OVERALL_SCORE ?? r.SCORE ?? r.ACCOUNTABILITY_SCORE
+    );
+    let grade = (r.DISTRICT_GRADE ?? r.OVERALL_RATING ?? r.RATING ?? "").trim();
+
     if (!Number.isFinite(score)) {
-      const rating = String(r.OVERALL_RATING ?? r.RATING ?? "").toUpperCase();
-      score = { A:95, B:85, C:75, D:65, F:55 }[rating] ?? NaN;
+      const g = grade.toUpperCase();
+      score = { A:95, B:85, C:75, D:65, F:55 }[g] ?? NaN;
     }
-    return { id, name, score, enroll };
-  }).filter(d => d.id && d.name && Number.isFinite(d.score));
+
+    if (!grade && Number.isFinite(score)) {
+      grade = score >= 90 ? "A"
+        : score >= 80 ? "B"
+        : score >= 70 ? "C"
+        : score >= 60 ? "D" : "F";
+    }
+
+    return { id, name, score, grade, enroll };
+  }).filter(d => d.id && d.name && (Number.isFinite(d.score) || d.grade));
 
   if (debugOn()) {
     console.info("[home.performance]", {
