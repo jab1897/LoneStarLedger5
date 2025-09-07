@@ -1,10 +1,12 @@
 // src/lib/campuses.js
 import Papa from "papaparse";
 
-/** Data locations */
-const CAMPUSES_CSV = "/data/Schools_2024_to_2025.csv";
+/** Data locations (env-first) */
+const CAMPUSES_CSV =
+  import.meta.env.VITE_CAMPUSES_CSV || "/data/Schools_2024_to_2025.csv";
 
-const CAMPUSES_GEOJSON = "/data/Schools_2024_to_2025.geojson";
+const CAMPUSES_GEOJSON =
+  import.meta.env.VITE_CAMPUSES_GEOJSON || "/data/Schools_2024_to_2025.geojson";
 
 /** -------- helpers -------- */
 const norm = (s) =>
