@@ -239,19 +239,19 @@ export async function getCampusesForDistrict(districtId) {
 
   let list = rows.filter((r) => r?.[kDist] != null && canonId(r[kDist]) === want);
 
-  // Sort campuses by score (lowest first) and drop rows with no/zero score
+  // Sort campuses by score (lowest first) but retain rows lacking scores
   const kScore = fields.CAMPUS_SCORE;
   if (kScore) {
     list = list
-      .filter((r) => {
+      .map((r) => {
         const s = toNumSafe(r[kScore]);
-        return Number.isFinite(s) && s > 0;
+        return {
+          row: r,
+          score: Number.isFinite(s) && s > 0 ? s : Infinity,
+        };
       })
-      .sort((a, b) => {
-        const A = toNumSafe(a[kScore]);
-        const B = toNumSafe(b[kScore]);
-        return A - B;
-      });
+      .sort((a, b) => a.score - b.score)
+      .map((o) => o.row);
   }
   return { rows: list, fields };
 }
