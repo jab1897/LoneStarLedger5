@@ -332,7 +332,8 @@ export default function DistrictDetail() {
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
             <p className="text-gray-600 mt-1">{county}</p>
             {(districtGrade || Number.isFinite(districtScore)) && (
-              <div className="mt-3">
+              <div className="mt-3 flex items-center gap-2">
+                <span className="font-bold">District Grade</span>
                 <GradeScorePill grade={districtGrade} score={districtScore} />
               </div>
             )}
