@@ -68,8 +68,6 @@ export default function CampusDetail() {
 
   const name = row && fields.CAMPUS_NAME ? row[fields.CAMPUS_NAME] : `Campus ${id}`;
 
-  const distId = row && fields.DISTRICT_ID ? row[fields.DISTRICT_ID] : "";
-
   const campusGrade = row && fields.CAMPUS_GRADE ? row[fields.CAMPUS_GRADE] : null;
   const campusScore = row && fields.CAMPUS_SCORE ? Number(row[fields.CAMPUS_SCORE]) : NaN;
   const grades = row && fields.GRADES ? row[fields.GRADES] : undefined;
@@ -101,17 +99,6 @@ export default function CampusDetail() {
                 <GradeScorePill grade={campusGrade} score={campusScore} />
               </div>
             )}
-            {distId && (
-              <p className="text-gray-600 mt-1">
-                District:{" "}
-                <Link
-                  className="text-indigo-700 underline"
-                  to={`/district/${encodeURIComponent(distId)}`}
-                >
-                  {distId}
-                </Link>
-              </p>
-            )}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -137,7 +124,7 @@ export default function CampusDetail() {
       </header>
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <h2 className="text-xl font-bold">Geometry</h2>
+        <h2 className="text-xl font-bold">Campus Location</h2>
         {geom ? (
           <LeafMap geom={geom} height={420} />
         ) : (
@@ -148,7 +135,7 @@ export default function CampusDetail() {
       </section>
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <h2 className="text-xl font-bold">Campus attributes</h2>
+        <h2 className="text-xl font-bold">Campus Facts</h2>
         {loading && <div>Loading…</div>}
         {error && <div className="text-red-700">{error}</div>}
         {!loading && !error && row && (
