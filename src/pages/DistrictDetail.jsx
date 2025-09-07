@@ -174,8 +174,13 @@ export default function DistrictDetail() {
         );
 
         const campusName = pick(r, "USER_School_Name", "CAMPUS_NAME", "Campus", "NAME");
-        const campusGrade =
-          pick(r, "Campus Grade", "CAMPUS_GRADE", "Campus_Rating", "RATING") || "—";
+        const campusGrade = pick(
+          r,
+          "Campus Grade",
+          "CAMPUS_GRADE",
+          "Campus_Rating",
+          "RATING"
+        );
         const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
 
         const readingNot = pick(
@@ -226,9 +231,7 @@ export default function DistrictDetail() {
           adminSalary: Number.isFinite(adminSalary) ? adminSalary : null,
         };
         })
-        .filter(
-          (r) => Number.isFinite(r.campusScore) && r.campusScore > 0
-        ),
+        .filter((r) => r.campusName),
     [campuses]
   );
 
