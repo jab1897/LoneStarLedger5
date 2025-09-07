@@ -160,12 +160,13 @@ export default function DistrictDetail() {
   // campuses table rows
   const campusRows = React.useMemo(
     () =>
-      (campuses || []).map((r) => {
-        const campusId = pick(
-          r,
-          "USER_School_Number",
-          "CAMPUS_N",
-          "CAMPUS_ID",
+      (campuses || [])
+        .map((r) => {
+          const campusId = pick(
+            r,
+            "USER_School_Number",
+            "CAMPUS_N",
+            "CAMPUS_ID",
           "Campus Number",
           "Campus_Number",
           "ID"
@@ -238,7 +239,8 @@ export default function DistrictDetail() {
           teacherSalary: Number.isFinite(teacherSalary) ? teacherSalary : null,
           adminSalary: Number.isFinite(adminSalary) ? adminSalary : null,
         };
-      }),
+        })
+        .filter((r) => Number.isFinite(r.campusScore) && r.campusScore > 0),
     [campuses]
   );
 
@@ -366,7 +368,7 @@ export default function DistrictDetail() {
         <DataTable
           columns={campusCols}
           rows={filteredCampuses}
-          initialSort={{ key: "campusScore", dir: "desc" }}
+          initialSort={{ key: "campusScore", dir: "asc" }}
         />
       </section>
     </div>
