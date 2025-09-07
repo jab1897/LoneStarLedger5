@@ -176,47 +176,69 @@ export default function DistrictDetail() {
           pick(r, "Campus Grade", "CAMPUS_GRADE", "Campus_Rating", "RATING") || "—";
         const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
 
-        let readingNot = pick(
-          r,
-          "Share of Students Not on Grade-Level: Reading",
-          "Reading Not on Grade-Level",
-          "READING_NOT_GL",
-          "READING_NOT_OGR"
+        const toFrac = (v) => {
+          const n = toNum(v);
+          return Number.isFinite(n) ? (n > 1 ? n / 100 : n) : null;
+        };
+
+        let readingNot = toFrac(
+          pick(
+            r,
+            "Share of Students Not on Grade-Level: Reading",
+            "Reading Not On Grade-Level",
+            "Reading Not on Grade-Level",
+            "READING_NOT_GL",
+            "READING_NOT_OGR"
+          )
         );
-        let mathNot = pick(
-          r,
-          "Share of Students Not on Grade-Level: Math",
-          "Math Not on Grade-Level",
-          "MATH_NOT_GL",
-          "MATH_NOT_OGR"
+        let mathNot = toFrac(
+          pick(
+            r,
+            "Share of Students Not on Grade-Level: Math",
+            "Math Not On Grade-Level",
+            "Math Not on Grade-Level",
+            "MATH_NOT_GL",
+            "MATH_NOT_OGR"
+          )
         );
 
         if (readingNot === null) {
-          const readOGL = pick(
-            r,
-            "Reading On Grade-Level",
-            "READING_OGR",
-            "READING_OGL",
-            "Reading OGL"
+          const readOGL = toFrac(
+            pick(
+              r,
+              "Reading On Grade-Level",
+              "READING_OGR",
+              "READING_OGL",
+              "Reading OGL"
+            )
           );
-          if (readOGL !== null) {
-            const n = toNum(readOGL);
-            readingNot = Number.isFinite(n) ? Math.max(0, Math.min(1, 1 - n)) : null;
-          }
+          if (readOGL !== null) readingNot = 1 - readOGL;
         }
         if (mathNot === null) {
-          const mathOGL = pick(
-            r,
-            "Math On Grade-Level",
-            "MATH_OGR",
-            "MATH_OGL",
-            "Math OGL"
+          const mathOGL = toFrac(
+            pick(r, "Math On Grade-Level", "MATH_OGR", "MATH_OGL", "Math OGL")
           );
-          if (mathOGL !== null) {
-            const n = toNum(mathOGL);
-            mathNot = Number.isFinite(n) ? Math.max(0, Math.min(1, 1 - n)) : null;
-          }
+          if (mathOGL !== null) mathNot = 1 - mathOGL;
         }
+
+        const teacherSalary = toNum(
+          pick(
+            r,
+            "Average Teacher Salary",
+            "TEACHER_AVG_SALARY",
+            "AVG_TEACH_SAL",
+            "AVG_TEACHER_SALARY"
+          )
+        );
+        const adminSalary = toNum(
+          pick(
+            r,
+            "Average Admin Salary",
+            "ADMIN_AVG_SALARY",
+            "AVG_ADMIN_SAL",
+            "AVG_ADMIN_SALARY"
+          )
+        );
 
         return {
           campusId,
@@ -225,8 +247,8 @@ export default function DistrictDetail() {
           campusScore: Number.isFinite(campusScore) ? campusScore : NaN,
           readingNot,
           mathNot,
-          teachers: toNum(r["Teacher Count"]),
-          admins: toNum(r["Admin Count"]),
+          teacherSalary: Number.isFinite(teacherSalary) ? teacherSalary : null,
+          adminSalary: Number.isFinite(adminSalary) ? adminSalary : null,
         };
       }),
     [campuses]
@@ -284,16 +306,16 @@ export default function DistrictDetail() {
       format: (v) => (v == null ? "—" : toPct(v)),
     },
     {
-      key: "teachers",
-      label: "Teachers",
+      key: "teacherSalary",
+      label: "Avg Teacher Salary",
       align: "right",
-      format: (v) => (Number.isFinite(v) ? v.toLocaleString() : "—"),
+      format: (v) => (Number.isFinite(v) ? usd.format(v) : "—"),
     },
     {
-      key: "admins",
-      label: "Admins",
+      key: "adminSalary",
+      label: "Avg Admin Salary",
       align: "right",
-      format: (v) => (Number.isFinite(v) ? v.toLocaleString() : "—"),
+      format: (v) => (Number.isFinite(v) ? usd.format(v) : "—"),
     },
   ];
 
