@@ -115,6 +115,7 @@ async function loadCampusesCSV() {
         "SCHOOL_NUMBER",
         "SCHOOL ID",
         "School Number",
+        "Column2",
       ],
       [/campus.*(id|number)/i, /school.*(id|number)/i]
     ),
@@ -128,6 +129,21 @@ async function loadCampusesCSV() {
       ["Campus Score", "CAMPUS_SCORE", "CampusScore", "SCORE", "RATING", "GRADE"],
       [/score/i, /rating/i, /grade/i]
     ),
+    CAMPUS_GRADE: bestHeader(
+      row0,
+      ["Campus Grade", "CAMPUS_GRADE", "Grade", "CAMPUS_GRADE_L"],
+      [/campus.*grade/i]
+    ),
+    GRADES: bestHeader(
+      row0,
+      ["Grades", "GRADE_RANGE", "USER_Grade_Range"],
+      [/grade.*range/i, /^grades?$/i]
+    ),
+    ENROLLMENT: bestHeader(
+      row0,
+      ["Enrollment", "ENROLLMENT"],
+      [/enroll/i]
+    ),
     READING_OGR: bestHeader(
       row0,
       ["Reading OGL", "Reading On Grade-Level", "READING_OGL", "READING OGL"],
@@ -137,6 +153,42 @@ async function loadCampusesCSV() {
       row0,
       ["Math OGL", "MATH_OGL", "Math On Grade-Level", "MATH OGL"],
       [/math.*(on.*grade|ogl)/i]
+    ),
+    READING_NOT: bestHeader(
+      row0,
+      [
+        "Reading Not On Grade-Level",
+        "Reading Not on Grade-Level",
+        "READING_NOT_GL",
+        "READING_NOT_OGR",
+        "Share of Students Not on Grade-Level: Reading",
+      ],
+      [/read.*not.*grade/i]
+    ),
+    MATH_NOT: bestHeader(
+      row0,
+      [
+        "Math Not On Grade-Level",
+        "Math Not on Grade-Level",
+        "MATH_NOT_GL",
+        "MATH_NOT_OGR",
+        "Share of Students Not on Grade-Level: Math",
+      ],
+      [/math.*not.*grade/i]
+    ),
+    ATTEND_RATE: bestHeader(
+      row0,
+      ["Attendance Rate", "ATTENDANCE_RATE"],
+      [/attendance/i]
+    ),
+    CHRONIC_ABS: bestHeader(
+      row0,
+      [
+        "Chronic Absenteeism Rate",
+        "Chronic Absenteeism",
+        "CHRONIC_ABSENTEEISM_RATE",
+      ],
+      [/absentee/i]
     ),
     TEACHER_COUNT: bestHeader(
       row0,
