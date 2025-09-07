@@ -176,12 +176,19 @@ export default function DistrictDetail() {
           pick(r, "Campus Grade", "CAMPUS_GRADE", "Campus_Rating", "RATING") || "—";
         const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
 
-        const toFrac = (v) => {
-          const n = toNum(v);
-          return Number.isFinite(n) ? (n > 1 ? n / 100 : n) : null;
+        const parsePct = (v) => {
+          const s = String(v ?? "").trim();
+          if (!s) return null;
+          if (/^\d+(\.\d+)?%$/.test(s)) {
+            const n = Number(s.replace(/%$/, ""));
+            return Number.isFinite(n) ? n / 100 : null;
+          }
+          const n = Number(s.replace(/[^0-9.\-]/g, ""));
+          if (!Number.isFinite(n)) return null;
+          return n > 1 ? n / 100 : n;
         };
 
-        let readingNot = toFrac(
+        const readingNot = parsePct(
           pick(
             r,
             "Share of Students Not on Grade-Level: Reading",
@@ -191,7 +198,7 @@ export default function DistrictDetail() {
             "READING_NOT_OGR"
           )
         );
-        let mathNot = toFrac(
+        const mathNot = parsePct(
           pick(
             r,
             "Share of Students Not on Grade-Level: Math",
@@ -201,25 +208,6 @@ export default function DistrictDetail() {
             "MATH_NOT_OGR"
           )
         );
-
-        if (readingNot === null) {
-          const readOGL = toFrac(
-            pick(
-              r,
-              "Reading On Grade-Level",
-              "READING_OGR",
-              "READING_OGL",
-              "Reading OGL"
-            )
-          );
-          if (readOGL !== null) readingNot = 1 - readOGL;
-        }
-        if (mathNot === null) {
-          const mathOGL = toFrac(
-            pick(r, "Math On Grade-Level", "MATH_OGR", "MATH_OGL", "Math OGL")
-          );
-          if (mathOGL !== null) mathNot = 1 - mathOGL;
-        }
 
         const teacherSalary = toNum(
           pick(
