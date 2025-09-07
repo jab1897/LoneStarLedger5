@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { fetchCSV, fetchJSON } from "../lib/staticData";
 import StatPill from "../ui/StatPill";
 import LeafMap from "../ui/Map";
+import { usd, num } from "../lib/format";
 
 // Use your env vars with safe fallbacks
 const CAMPUSES_CSV =
@@ -30,6 +31,14 @@ function buildHeaderMap(row) {
   return map;
 }
 
+function pickHdr(row, hdrMap, ...labels) {
+  for (const label of labels) {
+    const key = hdrMap.get(norm(label));
+    if (key && row && row[key] !== undefined && row[key] !== "") return row[key];
+  }
+  return undefined;
+}
+
 function bestHeader(row0, aliases = [], fuzzy = []) {
   const keys = Object.keys(row0 || {});
   const nm = new Map(keys.map((k) => [norm(k), k]));
@@ -51,6 +60,25 @@ const toNum = (v) => {
   const s = String(v).replace(/[\$,]/g, "");
   const n = Number(s);
   return Number.isNaN(n) ? NaN : n;
+};
+
+const parsePct = (v) => {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  if (/^\d+(\.\d+)?%$/.test(s)) {
+    const n = Number(s.replace(/%$/, ""));
+    return Number.isFinite(n) ? n / 100 : null;
+  }
+  const n = Number(s.replace(/[^0-9.\-]/g, ""));
+  if (!Number.isFinite(n)) return null;
+  return n > 1 ? n / 100 : n;
+};
+
+const toPct = (v, digits = 1) => {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  const clamped = Math.max(0, Math.min(1, n));
+  return `${(clamped * 100).toFixed(digits)}%`;
 };
 
 // Find one campus feature in a statewide GeoJSON by matching on likely id props
@@ -101,19 +129,6 @@ export default function CampusDetail() {
           ["USER_School_Number", "Campus ID", "CAMPUS_ID", "School Number", "SCHOOL_NUMBER"],
           [/campus.*(id|number)/i, /school.*(id|number)/i]
         );
-        const kName = bestHeader(
-          row0,
-          ["USER_School_Name", "Campus Name", "CAMPUS_NAME", "School Name", "NAME"],
-          [/campus.*name/i, /school.*name/i]
-        );
-        const kDist = bestHeader(
-          row0,
-          ["USER_District_Number", "DISTRICT_N", "LEAID", "LEA_ID", "LEA CODE"],
-          [/district.*(number|id|code)/i, /\blea\b/i]
-        );
-        const kGrades = bestHeader(row0, ["Grades", "GRADES"], [/grade/i]);
-        const kEnroll = bestHeader(row0, ["Enrollment", "ENROLLMENT"], [/enroll/i]);
-        const kType = bestHeader(row0, ["Type", "TYPE"], [/type/i]);
 
         // find record by canonical campus id across the detected id column
         let rec = null;
@@ -162,36 +177,101 @@ export default function CampusDetail() {
   // Title prefers CSV campus name
   const name =
     (row &&
-      (row[bestHeader(Object.fromEntries(hdr), ["USER_School_Name", "Campus Name", "CAMPUS_NAME", "School Name", "NAME"], [/campus.*name/i, /school.*name/i])] ||
-        row.CAMPUS ||
-        row.NAME)) ||
+      pickHdr(
+        row,
+        hdr,
+        "USER_School_Name",
+        "Campus Name",
+        "CAMPUS_NAME",
+        "School Name",
+        "NAME"
+      )) ||
     `Campus ${idCanon}`;
 
   // District link (if present)
-  const distRaw =
-    row &&
-    (row[bestHeader(Object.fromEntries(hdr), ["USER_District_Number", "DISTRICT_N", "LEAID", "LEA_ID", "LEA CODE"], [/district.*(number|id|code)/i, /\blea\b/i])] ||
-      row.DISTRICT_N ||
-      row.DISTRICT_ID);
+  const distRaw = row
+    ? pickHdr(
+        row,
+        hdr,
+        "USER_District_Number",
+        "DISTRICT_N",
+        "LEAID",
+        "LEA_ID",
+        "LEA CODE"
+      )
+    : undefined;
   const distId = distRaw ? canonId(distRaw) : "";
 
   // KPI pulls with graceful fallback
-  const grades =
-    row &&
-    (row[bestHeader(Object.fromEntries(hdr), ["Grades", "GRADES"], [/grade/i])] ||
-      row.GRADES ||
-      row.Grades);
+  const grades = row ? pickHdr(row, hdr, "Grades", "GRADES") : undefined;
   const enrollmentNum = toNum(
-    row &&
-      (row[bestHeader(Object.fromEntries(hdr), ["Enrollment", "ENROLLMENT"], [/enroll/i])] ||
-        row.ENROLLMENT ||
-        row.Enrollment)
+    row ? pickHdr(row, hdr, "Enrollment", "ENROLLMENT") : undefined
   );
-  const type =
-    row &&
-    (row[bestHeader(Object.fromEntries(hdr), ["Type", "TYPE"], [/type/i])] ||
-      row.TYPE ||
-      row.Type);
+  const readingNot = parsePct(
+    row
+      ? pickHdr(
+          row,
+          hdr,
+          "Share of Students Not on Grade-Level: Reading",
+          "Reading Not On Grade-Level",
+          "Reading Not on Grade-Level",
+          "READING_NOT_GL",
+          "READING_NOT_OGR"
+        )
+      : undefined
+  );
+  const mathNot = parsePct(
+    row
+      ? pickHdr(
+          row,
+          hdr,
+          "Share of Students Not on Grade-Level: Math",
+          "Math Not On Grade-Level",
+          "Math Not on Grade-Level",
+          "MATH_NOT_GL",
+          "MATH_NOT_OGR"
+        )
+      : undefined
+  );
+  const attendanceRate = parsePct(
+    row ? pickHdr(row, hdr, "Attendance Rate", "ATTENDANCE_RATE") : undefined
+  );
+  const chronicAbs = parsePct(
+    row
+      ? pickHdr(
+          row,
+          hdr,
+          "Chronic Absenteeism Rate",
+          "Chronic Absenteeism",
+          "CHRONIC_ABSENTEEISM_RATE"
+        )
+      : undefined
+  );
+  const teacherSalary = toNum(
+    row
+      ? pickHdr(
+          row,
+          hdr,
+          "Average Teacher Salary",
+          "TEACHER_AVG_SALARY",
+          "AVG_TEACH_SAL",
+          "AVG_TEACHER_SALARY"
+        )
+      : undefined
+  );
+  const adminSalary = toNum(
+    row
+      ? pickHdr(
+          row,
+          hdr,
+          "Average Admin Salary",
+          "ADMIN_AVG_SALARY",
+          "AVG_ADMIN_SAL",
+          "AVG_ADMIN_SALARY"
+        )
+      : undefined
+  );
+  const type = row ? pickHdr(row, hdr, "Type", "TYPE") : undefined;
 
   return (
     <div className="space-y-6">
@@ -214,7 +294,31 @@ export default function CampusDetail() {
 
           <div className="flex flex-wrap gap-2">
             <StatPill label="Grades" value={grades || "—"} />
-            <StatPill label="Enrollment" value={Number.isNaN(enrollmentNum) ? "—" : new Intl.NumberFormat("en-US").format(enrollmentNum)} />
+            <StatPill
+              label="Enrollment"
+              value={Number.isNaN(enrollmentNum) ? "—" : num.format(enrollmentNum)}
+            />
+            <StatPill
+              label="Reading Not On Grade-Level"
+              value={toPct(readingNot)}
+            />
+            <StatPill
+              label="Math Not On Grade-Level"
+              value={toPct(mathNot)}
+            />
+            <StatPill label="Attendance Rate" value={toPct(attendanceRate)} />
+            <StatPill
+              label="Chronic Absenteeism Rate"
+              value={toPct(chronicAbs)}
+            />
+            <StatPill
+              label="Teacher Salary"
+              value={Number.isNaN(teacherSalary) ? "—" : usd.format(teacherSalary)}
+            />
+            <StatPill
+              label="Average Admin Salary"
+              value={Number.isNaN(adminSalary) ? "—" : usd.format(adminSalary)}
+            />
             <StatPill label="Type" value={type || "—"} />
           </div>
         </div>
