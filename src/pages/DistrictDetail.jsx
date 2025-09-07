@@ -59,7 +59,10 @@ const toNumSafe = (v) => {
 const pick = (row, ...keys) => {
   for (const k of keys) {
     const v = row?.[k];
-    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+    if (v !== undefined && v !== null) {
+      const s = String(v).trim();
+      if (s !== "" && s !== "." && s !== "-") return v;
+    }
   }
   return null;
 };
@@ -69,12 +72,6 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : NaN;
 };
 
-const toPct = (v, digits = 1) => {
-  const n = toNum(v);
-  if (!Number.isFinite(n)) return "—";
-  const clamped = Math.max(0, Math.min(1, n));
-  return `${(clamped * 100).toFixed(digits)}%`;
-};
 
 export default function DistrictDetail() {
   const { id } = useParams();
@@ -181,37 +178,21 @@ export default function DistrictDetail() {
           pick(r, "Campus Grade", "CAMPUS_GRADE", "Campus_Rating", "RATING") || "—";
         const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
 
-        const parsePct = (v) => {
-          const s = String(v ?? "").trim();
-          if (!s) return null;
-          if (/^\d+(\.\d+)?%$/.test(s)) {
-            const n = Number(s.replace(/%$/, ""));
-            return Number.isFinite(n) ? n / 100 : null;
-          }
-          const n = Number(s.replace(/[^0-9.\-]/g, ""));
-          if (!Number.isFinite(n)) return null;
-          return n > 1 ? n / 100 : n;
-        };
-
-        const readingNot = parsePct(
-          pick(
-            r,
-            "Share of Students Not on Grade-Level: Reading",
-            "Reading Not On Grade-Level",
-            "Reading Not on Grade-Level",
-            "READING_NOT_GL",
-            "READING_NOT_OGR"
-          )
+        const readingNot = pick(
+          r,
+          "Share of Students Not on Grade-Level: Reading",
+          "Reading Not On Grade-Level",
+          "Reading Not on Grade-Level",
+          "READING_NOT_GL",
+          "READING_NOT_OGR"
         );
-        const mathNot = parsePct(
-          pick(
-            r,
-            "Share of Students Not on Grade-Level: Math",
-            "Math Not On Grade-Level",
-            "Math Not on Grade-Level",
-            "MATH_NOT_GL",
-            "MATH_NOT_OGR"
-          )
+        const mathNot = pick(
+          r,
+          "Share of Students Not on Grade-Level: Math",
+          "Math Not On Grade-Level",
+          "Math Not on Grade-Level",
+          "MATH_NOT_GL",
+          "MATH_NOT_OGR"
         );
 
         const teacherSalary = toNum(
@@ -292,13 +273,13 @@ export default function DistrictDetail() {
       key: "readingNot",
       label: "Reading Not On Grade-Level",
       align: "right",
-      format: (v) => (v == null ? "—" : toPct(v)),
+      format: (v) => (v == null ? "—" : String(v)),
     },
     {
       key: "mathNot",
       label: "Math Not On Grade-Level",
       align: "right",
-      format: (v) => (v == null ? "—" : toPct(v)),
+      format: (v) => (v == null ? "—" : String(v)),
     },
     {
       key: "teacherSalary",
