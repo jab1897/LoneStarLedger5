@@ -91,7 +91,7 @@ export async function loadSuperintendents(){
   return rows;
 }
 
-// 2) Indebted table: id, name, debt metric, enroll
+// 2) Indebted table: id, name, debt metric, per-pupil debt, enroll
 export async function loadIndebted(){
   const text = await fetchPublic("/data/home/indebted.csv");
   if(!text) return [];
@@ -109,7 +109,7 @@ export async function loadIndebted(){
       debt = perDebt * enroll;
     }
 
-    return { id, name, enroll, debt };
+    return { id, name, enroll, debt, perDebt };
   }).filter(d => d.id && d.name && Number.isFinite(d.debt));
 
   if (debugOn()) {
@@ -130,9 +130,15 @@ export async function loadPerformance(){
     const id   = r.DISTRICT_N ?? r.DISTRICT_ID ?? r.DISTRICT_NUMBER ?? r.ID;
     const name = r.DISTRICT_NAME ?? r.NAME ?? r.DNAME ?? "";
     const enroll = num(r.ENROLLMENT ?? r.Enrollment ?? r.ENR ?? r.STUDENTS);
-    let score = num(r.OVERALL_SCORE ?? r.SCORE ?? r.ACCOUNTABILITY_SCORE);
+    let score = num(r.OVERALL_SCORE ?? r.SCORE ?? r.ACCOUNTABILITY_SCORE ?? r.DISTRICT_SCORE ?? r["District Score"]);
     if (!Number.isFinite(score)) {
-      const rating = String(r.OVERALL_RATING ?? r.RATING ?? "").toUpperCase();
+      const rating = String(
+        r.OVERALL_RATING ??
+        r.RATING ??
+        r.DISTRICT_GRADE ??
+        r["District Grade"] ??
+        ""
+      ).toUpperCase();
       score = { A:95, B:85, C:75, D:65, F:55 }[rating] ?? NaN;
     }
     return { id, name, score, enroll };
