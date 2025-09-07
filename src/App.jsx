@@ -7,6 +7,7 @@ import Districts from "./pages/Districts";
 import DistrictDetail from "./pages/DistrictDetail";
 import Campuses from "./pages/Campuses";
 import CampusDetail from "./pages/CampusDetail";
+import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import ErrorBoundary from "./shell/ErrorBoundary";
@@ -26,6 +27,7 @@ export default function App() {
               <Route path="/district/:id" element={<DistrictDetail />} />
               <Route path="/campuses" element={<Campuses />} />
               <Route path="/campus/:id" element={<CampusDetail />} />
+              <Route path="/search" element={<Search />} />
               <Route path="/spending" element={<Spending />} />
               <Route path="/about" element={<About />} />
               <Route path="*" element={<NotFound />} />

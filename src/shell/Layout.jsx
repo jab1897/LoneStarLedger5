@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
 export default function Layout({ children }) {
   return (
@@ -47,13 +47,14 @@ function Footer() {
 function GlobalSearch() {
   const [q, setQ] = React.useState("");
   const location = useLocation();
+  const nav = useNavigate();
 
   const onSubmit = (e) => {
     e.preventDefault();
-    window.location.assign(`/search?q=${encodeURIComponent(q)}`);
+    nav(`/search?q=${encodeURIComponent(q)}`);
   };
 
-  React.useEffect(()=>{
+  React.useEffect(() => {
     const params = new URLSearchParams(location.search);
     const existing = params.get("q");
     if (existing) setQ(existing);
@@ -63,12 +64,26 @@ function GlobalSearch() {
     <form onSubmit={onSubmit} className="relative">
       <input
         value={q}
-        onChange={(e)=>setQ(e.target.value)}
+        onChange={(e) => setQ(e.target.value)}
         placeholder="Search district, campus, or vendor"
         className="w-full rounded-xl border bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-600 focus:border-blue-600 px-4 py-2.5 pr-10"
       />
-      <button aria-label="Search" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-100">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-gray-500"><path fillRule="evenodd" d="M10 2a8 8 0 105.293 14.293l4.207 4.207a1 1 0 001.414-1.414l-4.207-4.207A8 8 0 0010 2zm-6 8a6 6 0 1110.392 4.392A6 6 0 014 10z" clipRule="evenodd"/></svg>
+      <button
+        aria-label="Search"
+        className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-100"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          className="w-5 h-5 text-gray-500"
+        >
+          <path
+            fillRule="evenodd"
+            d="M10 2a8 8 0 105.293 14.293l4.207 4.207a1 1 0 001.414-1.414l-4.207-4.207A8 8 0 0010 2zm-6 8a6 6 0 1110.392 4.392A6 6 0 014 10z"
+            clipRule="evenodd"
+          />
+        </svg>
       </button>
     </form>
   );
