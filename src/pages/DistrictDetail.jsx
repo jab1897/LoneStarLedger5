@@ -67,8 +67,23 @@ const pick = (row, ...keys) => {
 };
 
 const toNum = (v) => {
-  const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
+  if (v === null || v === undefined) return NaN;
+  const s = String(v).trim();
+  if (s === "" || s === "." || s === "-") return NaN;
+  const n = Number(s.replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : NaN;
+};
+
+// If v is numeric (0..1 or 0..100), output a pretty percent; if it’s already a string like "24%", pass it through.
+const toPct = (v, digits = 0) => {
+  if (v === null || v === undefined) return "—";
+  const s = String(v).trim();
+  if (s.endsWith("%")) return s;
+  const n = toNum(v);
+  if (!Number.isFinite(n)) return s || "—";
+  const frac = n > 1 ? n / 100 : n;
+  const clamped = Math.max(0, Math.min(1, frac));
+  return `${(clamped * 100).toFixed(digits)}%`;
 };
 
 
@@ -277,13 +292,13 @@ export default function DistrictDetail() {
       key: "readingNot",
       label: "Reading Not On Grade-Level",
       align: "right",
-      format: (v) => (v == null ? "—" : String(v)),
+      format: (v) => (v == null ? "—" : toPct(v)),
     },
     {
       key: "mathNot",
       label: "Math Not On Grade-Level",
       align: "right",
-      format: (v) => (v == null ? "—" : String(v)),
+      format: (v) => (v == null ? "—" : toPct(v)),
     },
     {
       key: "teacherSalary",
