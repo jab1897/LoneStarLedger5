@@ -15,7 +15,9 @@ export default function GradeScorePill({ grade, score }) {
   const showScore = Number.isFinite(score);
   if (!g && !showScore) return null;
   return (
-    <div className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold ${color}`}>
+    <div
+      className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-base font-bold ${color}`}
+    >
       {g && <span>{g}</span>}
       {showScore && <span>{num.format(score)}</span>}
     </div>
