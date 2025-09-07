@@ -23,7 +23,14 @@ function TopBar() {
         <nav className="hidden md:flex items-center gap-6 text-sm">
           <NavLink to="/districts" className={({isActive})=>`hover:text-blue-700 ${isActive?'text-blue-700':'text-gray-600'}`}>Districts</NavLink>
           <NavLink to="/campuses" className={({isActive})=>`hover:text-blue-700 ${isActive?'text-blue-700':'text-gray-600'}`}>Campuses</NavLink>
-          <NavLink to="/spending" className={({isActive})=>`hover:text-blue-700 ${isActive?'text-blue-700':'text-gray-600'}`}>Spending</NavLink>
+            <NavLink
+              to="/why-no-amount-of-money-is-enough"
+              className={({ isActive }) =>
+                `hover:text-blue-700 ${isActive ? 'text-blue-700' : 'text-gray-600'}`
+              }
+            >
+              Why No Amount of Money is Enough
+            </NavLink>
           <NavLink to="/about" className={({isActive})=>`hover:text-blue-700 ${isActive?'text-blue-700':'text-gray-600'}`}>About</NavLink>
         </nav>
         <div className="ml-auto w-full md:w-96">
