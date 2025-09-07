@@ -12,8 +12,8 @@ import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import ErrorBoundary from "./shell/ErrorBoundary";
 
-// Lazy-load Spending so it doesn't evaluate unless visited
-const Spending = lazy(() => import("./pages/Spending"));
+// Lazy-load the money explainer page so it doesn't evaluate unless visited
+const WhyNoAmount = lazy(() => import("./pages/WhyNoAmount"));
 
 export default function App() {
   return (
@@ -28,7 +28,10 @@ export default function App() {
               <Route path="/campuses" element={<Campuses />} />
               <Route path="/campus/:id" element={<CampusDetail />} />
               <Route path="/search" element={<Search />} />
-              <Route path="/spending" element={<Spending />} />
+                <Route
+                  path="/why-no-amount-of-money-is-enough"
+                  element={<WhyNoAmount />}
+                />
               <Route path="/about" element={<About />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
