@@ -1,4 +1,3 @@
-// src/pages/DistrictDetail.jsx
 import React from "react";
 import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
@@ -75,10 +74,15 @@ const toNum = (v) => {
   return Number.isFinite(n) ? n : NaN;
 };
 
-const toPct = (v, digits = 1) => {
+// If v is numeric (0..1 or 0..100), output a pretty percent; if it’s already a string like "24%", pass it through.
+const toPct = (v, digits = 0) => {
+  if (v === null || v === undefined) return "—";
+  const s = String(v).trim();
+  if (s.endsWith("%")) return s;
   const n = toNum(v);
-  if (!Number.isFinite(n)) return "—";
-  const clamped = Math.max(0, Math.min(1, n));
+  if (!Number.isFinite(n)) return s || "—";
+  const frac = n > 1 ? n / 100 : n;
+  const clamped = Math.max(0, Math.min(1, frac));
   return `${(clamped * 100).toFixed(digits)}%`;
 };
 
@@ -177,85 +181,72 @@ export default function DistrictDetail() {
             "USER_School_Number",
             "CAMPUS_N",
             "CAMPUS_ID",
-          "Campus Number",
-          "Campus_Number",
-          "ID"
-        );
+            "Campus Number",
+            "Campus_Number",
+            "ID"
+          );
 
-        const campusName = pick(r, "USER_School_Name", "CAMPUS_NAME", "Campus", "NAME");
-        const campusGrade = pick(
-          r,
-          "Campus Grade",
-          "CAMPUS_GRADE",
-          "Campus_Rating",
-          "RATING"
-        );
-        const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
+          const campusName = pick(r, "USER_School_Name", "CAMPUS_NAME", "Campus", "NAME");
+          const campusGrade = pick(
+            r,
+            "Campus Grade",
+            "CAMPUS_GRADE",
+            "Campus_Rating",
+            "RATING"
+          );
+          const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
 
-        const parsePct = (v) => {
-          const s = String(v ?? "").trim();
-          if (!s) return null;
-          if (/^\d+(\.\d+)?%$/.test(s)) {
-            const n = Number(s.replace(/%$/, ""));
-            return Number.isFinite(n) ? n / 100 : null;
-          }
-          const n = Number(s.replace(/[^0-9.\-]/g, ""));
-          if (!Number.isFinite(n)) return null;
-          return n > 1 ? n / 100 : n;
-        };
-
-        const readingNot = parsePct(
-          pick(
+          // --- RESOLVED: keep CSV "Not On Grade-Level" values as-is (strings or numbers) ---
+          const readingNot = pick(
             r,
             "Share of Students Not on Grade-Level: Reading",
             "Reading Not On Grade-Level",
             "Reading Not on Grade-Level",
             "READING_NOT_GL",
             "READING_NOT_OGR"
-          )
-        );
-        const mathNot = parsePct(
-          pick(
+          );
+          const mathNot = pick(
             r,
             "Share of Students Not on Grade-Level: Math",
             "Math Not On Grade-Level",
             "Math Not on Grade-Level",
             "MATH_NOT_GL",
             "MATH_NOT_OGR"
-          )
-        );
+          );
 
-        const teacherSalary = toNum(
-          pick(
-            r,
-            "Average Teacher Salary",
-            "TEACHER_AVG_SALARY",
-            "AVG_TEACH_SAL",
-            "AVG_TEACHER_SALARY"
-          )
-        );
-        const adminSalary = toNum(
-          pick(
-            r,
-            "Average Admin Salary",
-            "ADMIN_AVG_SALARY",
-            "AVG_ADMIN_SAL",
-            "AVG_ADMIN_SALARY"
-          )
-        );
+          const teacherSalary = toNum(
+            pick(
+              r,
+              "Average Teacher Salary",
+              "TEACHER_AVG_SALARY",
+              "AVG_TEACH_SAL",
+              "AVG_TEACHER_SALARY"
+            )
+          );
+          const adminSalary = toNum(
+            pick(
+              r,
+              "Average Admin Salary",
+              "ADMIN_AVG_SALARY",
+              "AVG_ADMIN_SAL",
+              "AVG_ADMIN_SALARY"
+            )
+          );
 
-        return {
-          campusId,
-          campusName,
-          campusGrade,
-          campusScore: Number.isFinite(campusScore) ? campusScore : NaN,
-          readingNot,
-          mathNot,
-          teacherSalary: Number.isFinite(teacherSalary) ? teacherSalary : null,
-          adminSalary: Number.isFinite(adminSalary) ? adminSalary : null,
-        };
+          return {
+            campusId,
+            campusName,
+            campusGrade,
+            campusScore:
+              Number.isFinite(campusScore) && campusScore > 0 ? campusScore : Infinity,
+            readingNot,
+            mathNot,
+            teacherSalary: Number.isFinite(teacherSalary) ? teacherSalary : null,
+            adminSalary: Number.isFinite(adminSalary) ? adminSalary : null,
+          };
         })
-        .filter((r) => Number.isFinite(r.campusScore) && r.campusScore > 0),
+        // --- RESOLVED: keep rows that have a name (don’t drop campuses for missing score) ---
+        .filter((r) => r.campusName),
     [campuses]
   );
 
