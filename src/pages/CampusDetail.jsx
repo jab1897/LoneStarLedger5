@@ -25,6 +25,8 @@ const toPct = (v, digits = 1) => {
   return `${(clamped * 100).toFixed(digits)}%`;
 };
 
+const normKey = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
 export default function CampusDetail() {
   const { id } = useParams();
 
@@ -78,6 +80,35 @@ export default function CampusDetail() {
   const chronicAbs = row && fields.CHRONIC_ABS ? parsePct(row[fields.CHRONIC_ABS]) : null;
   const teacherSalary = row && fields.AVG_TEACH_SAL ? Number(row[fields.AVG_TEACH_SAL]) : NaN;
   const adminSalary = row && fields.AVG_ADMIN_SAL ? Number(row[fields.AVG_ADMIN_SAL]) : NaN;
+
+  const hiddenKeys = React.useMemo(() => {
+    const base = [
+      "objectid",
+      "districtnumber",
+      "districtid",
+      "schoolnumber",
+      "campusid",
+      "column2",
+      "userinstructiontype",
+      "userncesschoolid",
+      "campusgrade",
+      "campusscore",
+    ];
+    const dyn = [
+      fields.CAMPUS_SCORE,
+      fields.CAMPUS_GRADE,
+      fields.DISTRICT_ID,
+      fields.CAMPUS_ID,
+    ]
+      .filter(Boolean)
+      .map(normKey);
+    return new Set([...base, ...dyn].map(normKey));
+  }, [fields]);
+
+  const salaryKeys = React.useMemo(
+    () => [fields.AVG_TEACH_SAL, fields.AVG_ADMIN_SAL].filter(Boolean).map(normKey),
+    [fields]
+  );
 
   return (
     <div className="space-y-6">
@@ -140,12 +171,27 @@ export default function CampusDetail() {
         {error && <div className="text-red-700">{error}</div>}
         {!loading && !error && row && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            {Object.entries(row).map(([k, v]) => (
-              <div key={k} className="bg-gray-50 border rounded-xl px-3 py-2">
-                <div className="text-gray-600">{k}</div>
-                <div className="font-medium break-words">{String(v)}</div>
-              </div>
-            ))}
+            {Object.entries(row)
+              .filter(([k]) => !hiddenKeys.has(normKey(k)))
+              .map(([k, v]) => {
+                const title = k
+                  .replace(/^USER_/i, "")
+                  .replace(/_/g, " ")
+                  .replace(/\b\w/g, (c) => c.toUpperCase());
+
+                let value = v;
+                if (salaryKeys.includes(normKey(k))) {
+                  const n = Number(String(v).replace(/[^0-9.-]/g, ""));
+                  value = Number.isFinite(n) ? usd.format(n) : v;
+                }
+
+                return (
+                  <div key={k} className="bg-gray-50 border rounded-xl px-3 py-2">
+                    <div className="text-gray-600">{title}</div>
+                    <div className="font-medium break-words">{String(value)}</div>
+                  </div>
+                );
+              })}
           </div>
         )}
         {!loading && !error && !row && (

@@ -6,12 +6,20 @@ export default function WhyNoAmountPage() {
     <div className="px-4 md:px-8 space-y-8">
       <h1 className="text-3xl font-extrabold mb-4">Why No Amount of Money is Enough</h1>
       <VideoEmbed
+codex/fix-bugs-in-campuses.js-ysz2i1
+        src="https://www.youtube.com/embed/GDn1lxY_qaI"
+        title="The Heist: What Happens to the Money in a $100 Billion Industry"
+      />
+      <VideoEmbed
+        src="https://www.youtube.com/embed/VPpG5u2yeEo"
+        title="The Profiteers: The People Who Steer Money Out of the Classroom"
         src="https://www.youtube.com/embed/dQw4w9WgXcQ"
         title="Why no amount of money is enough"
       />
       <VideoEmbed
         src="https://www.youtube.com/embed/3GwjfUFyY6M"
         title="Short explanation"
+    main
       />
     </div>
   );
