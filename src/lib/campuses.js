@@ -239,7 +239,7 @@ export async function getCampusesForDistrict(districtId) {
 
   let list = rows.filter((r) => r?.[kDist] != null && canonId(r[kDist]) === want);
 
-  // Sort campuses by score (lowest first) but retain rows lacking scores
+  // --- RESOLVED: keep all rows but sort by score (missing/zero -> Infinity so they appear last)
   const kScore = fields.CAMPUS_SCORE;
   if (kScore) {
     list = list
@@ -253,6 +253,7 @@ export async function getCampusesForDistrict(districtId) {
       .sort((a, b) => a.score - b.score)
       .map((o) => o.row);
   }
+
   return { rows: list, fields };
 }
 

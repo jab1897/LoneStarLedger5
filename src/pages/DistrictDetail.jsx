@@ -86,7 +86,6 @@ const toPct = (v, digits = 0) => {
   return `${(clamped * 100).toFixed(digits)}%`;
 };
 
-
 export default function DistrictDetail() {
   const { id } = useParams();
   const [row, setRow] = React.useState(null);
@@ -182,69 +181,71 @@ export default function DistrictDetail() {
             "USER_School_Number",
             "CAMPUS_N",
             "CAMPUS_ID",
-          "Campus Number",
-          "Campus_Number",
-          "ID"
-        );
+            "Campus Number",
+            "Campus_Number",
+            "ID"
+          );
 
-        const campusName = pick(r, "USER_School_Name", "CAMPUS_NAME", "Campus", "NAME");
-        const campusGrade = pick(
-          r,
-          "Campus Grade",
-          "CAMPUS_GRADE",
-          "Campus_Rating",
-          "RATING"
-        );
-        const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
-
-        const readingNot = pick(
-          r,
-          "Share of Students Not on Grade-Level: Reading",
-          "Reading Not On Grade-Level",
-          "Reading Not on Grade-Level",
-          "READING_NOT_GL",
-          "READING_NOT_OGR"
-        );
-        const mathNot = pick(
-          r,
-          "Share of Students Not on Grade-Level: Math",
-          "Math Not On Grade-Level",
-          "Math Not on Grade-Level",
-          "MATH_NOT_GL",
-          "MATH_NOT_OGR"
-        );
-
-        const teacherSalary = toNum(
-          pick(
+          const campusName = pick(r, "USER_School_Name", "CAMPUS_NAME", "Campus", "NAME");
+          const campusGrade = pick(
             r,
-            "Average Teacher Salary",
-            "TEACHER_AVG_SALARY",
-            "AVG_TEACH_SAL",
-            "AVG_TEACHER_SALARY"
-          )
-        );
-        const adminSalary = toNum(
-          pick(
-            r,
-            "Average Admin Salary",
-            "ADMIN_AVG_SALARY",
-            "AVG_ADMIN_SAL",
-            "AVG_ADMIN_SALARY"
-          )
-        );
+            "Campus Grade",
+            "CAMPUS_GRADE",
+            "Campus_Rating",
+            "RATING"
+          );
+          const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
 
-        return {
-          campusId,
-          campusName,
-          campusGrade,
-          campusScore:
-            Number.isFinite(campusScore) && campusScore > 0 ? campusScore : Infinity,
-          readingNot,
-          mathNot,
-          teacherSalary: Number.isFinite(teacherSalary) ? teacherSalary : null,
-          adminSalary: Number.isFinite(adminSalary) ? adminSalary : null,
-        };
+          // --- RESOLVED: keep CSV "Not On Grade-Level" values as-is (strings or numbers) ---
+          const readingNot = pick(
+            r,
+            "Share of Students Not on Grade-Level: Reading",
+            "Reading Not On Grade-Level",
+            "Reading Not on Grade-Level",
+            "READING_NOT_GL",
+            "READING_NOT_OGR"
+          );
+          const mathNot = pick(
+            r,
+            "Share of Students Not on Grade-Level: Math",
+            "Math Not On Grade-Level",
+            "Math Not on Grade-Level",
+            "MATH_NOT_GL",
+            "MATH_NOT_OGR"
+          );
+
+          const teacherSalary = toNum(
+            pick(
+              r,
+              "Average Teacher Salary",
+              "TEACHER_AVG_SALARY",
+              "AVG_TEACH_SAL",
+              "AVG_TEACHER_SALARY"
+            )
+          );
+          const adminSalary = toNum(
+            pick(
+              r,
+              "Average Admin Salary",
+              "ADMIN_AVG_SALARY",
+              "AVG_ADMIN_SAL",
+              "AVG_ADMIN_SALARY"
+            )
+          );
+
+          return {
+            campusId,
+            campusName,
+            campusGrade,
+            campusScore:
+              Number.isFinite(campusScore) && campusScore > 0 ? campusScore : Infinity,
+            readingNot,
+            mathNot,
+            teacherSalary: Number.isFinite(teacherSalary) ? teacherSalary : null,
+            adminSalary: Number.isFinite(adminSalary) ? adminSalary : null,
+          };
         })
+        // --- RESOLVED: keep rows that have a name (don’t drop campuses for missing score) ---
         .filter((r) => r.campusName),
     [campuses]
   );
