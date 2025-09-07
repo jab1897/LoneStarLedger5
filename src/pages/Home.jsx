@@ -161,7 +161,11 @@ export default function Home() {
 
         {/* Your 8 KPIs */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total Spending" value={fmtMoney(stats?.totalSpendingSum)} to="/spending" />
+            <StatCard
+              label="Total Spending"
+              value={fmtMoney(stats?.totalSpendingSum)}
+              to="/why-no-amount-of-money-is-enough"
+            />
           <StatCard label="Enrollment" value={fmtInt(stats?.enrollmentTotal)} to="/districts" />
           <StatCard label="Avg Per-Student Spending" value={fmtMoney(stats?.perStudentSpendingAvgFixed)} to="/districts" />
           <StatCard label="District Debt" value={fmtMoney(stats?.districtDebtTotal)} to="/districts" />
