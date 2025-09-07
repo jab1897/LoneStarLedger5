@@ -226,7 +226,9 @@ export default function DistrictDetail() {
           adminSalary: Number.isFinite(adminSalary) ? adminSalary : null,
         };
         })
-        .filter((r) => r.campusName),
+        .filter(
+          (r) => Number.isFinite(r.campusScore) && r.campusScore > 0
+        ),
     [campuses]
   );
 
