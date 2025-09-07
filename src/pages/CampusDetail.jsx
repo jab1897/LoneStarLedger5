@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { getCampusById, getCampusFeatureById } from "../lib/campuses";
 import StatPill from "../ui/StatPill";
 import LeafMap from "../ui/Map";
+import GradeScorePill from "../ui/GradeScorePill";
 import { usd, num } from "../lib/format";
 
 const parsePct = (v) => {
@@ -69,6 +70,8 @@ export default function CampusDetail() {
 
   const distId = row && fields.DISTRICT_ID ? row[fields.DISTRICT_ID] : "";
 
+  const campusGrade = row && fields.CAMPUS_GRADE ? row[fields.CAMPUS_GRADE] : null;
+  const campusScore = row && fields.CAMPUS_SCORE ? Number(row[fields.CAMPUS_SCORE]) : NaN;
   const grades = row && fields.GRADES ? row[fields.GRADES] : undefined;
   const enrollmentNum = row && fields.ENROLLMENT ? Number(row[fields.ENROLLMENT]) : NaN;
   const readingNot = row && fields.READING_NOT ? parsePct(row[fields.READING_NOT]) : null;
@@ -92,19 +95,23 @@ export default function CampusDetail() {
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{name}</h1>
-            <p className="text-gray-600 mt-1">
-              {distId ? (
-                <>
-                  District: {" "}
-                  <Link
-                    className="text-indigo-700 underline"
-                    to={`/district/${encodeURIComponent(distId)}`}
-                  >
-                    {distId}
-                  </Link>
-                </>
-              ) : null}
-            </p>
+            {(campusGrade || Number.isFinite(campusScore)) && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="font-bold">Campus Grade</span>
+                <GradeScorePill grade={campusGrade} score={campusScore} />
+              </div>
+            )}
+            {distId && (
+              <p className="text-gray-600 mt-1">
+                District:{" "}
+                <Link
+                  className="text-indigo-700 underline"
+                  to={`/district/${encodeURIComponent(distId)}`}
+                >
+                  {distId}
+                </Link>
+              </p>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">
