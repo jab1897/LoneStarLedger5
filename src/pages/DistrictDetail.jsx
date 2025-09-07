@@ -2,6 +2,7 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
+import GradeScorePill from "../ui/GradeScorePill";
 import { fetchJSON, findFeatureByProp } from "../lib/staticData";
 import { usd, num } from "../lib/format";
 import LeafMap from "../ui/Map";
@@ -150,6 +151,9 @@ export default function DistrictDetail() {
   const teacherSalary = k("Average Teacher Salary", "TEACHER_SALARY");
   const principalSal = k("Average Principal Salary", "PRINCIPAL_SALARY");
   const superSalary = k("Superintendent Salary", "SUPERINTENDENT_SALARY");
+
+  const districtGrade = pickHdr(row, hdr, "District Grade", "DISTRICT_GRADE", "Grade");
+  const districtScore = k("District Score", "DISTRICT_SCORE", "Score");
 
   const perStudent = !Number.isNaN(perStudentCSV)
     ? perStudentCSV
@@ -327,6 +331,11 @@ export default function DistrictDetail() {
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
             <p className="text-gray-600 mt-1">{county}</p>
+            {(districtGrade || Number.isFinite(districtScore)) && (
+              <div className="mt-3">
+                <GradeScorePill grade={districtGrade} score={districtScore} />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">
