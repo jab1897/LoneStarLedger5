@@ -1,14 +1,20 @@
 // src/lib/campuses.js
 import Papa from "papaparse";
 
-/** Data locations (env-first) */
+/** -----------------------------------------------------------------------
+ * Data locations (env-first)
+ * In a Vite build, anything under /public is served from the root.
+ * So /public/data/foo.csv is available at /data/foo.csv.
+ * ----------------------------------------------------------------------*/
+const DEFAULT_CSV = "/data/Schools_2024_to_2025.csv";
 const CAMPUSES_CSV =
-  import.meta.env.VITE_CAMPUSES_CSV || "/public/data/Schools_2024_to_2025.csv";
+  (import.meta.env.VITE_CAMPUSES_CSV && String(import.meta.env.VITE_CAMPUSES_CSV)) ||
+  DEFAULT_CSV;
 
 const CAMPUSES_GEOJSON =
   import.meta.env.VITE_CAMPUSES_GEOJSON || "/data/Schools_2024_to_2025.geojson";
 
-/** -------- helpers -------- */
+/** ------------------------------ helpers ------------------------------ */
 const norm = (s) =>
   String(s ?? "")
     .toLowerCase()
@@ -19,8 +25,8 @@ const norm = (s) =>
 const canonId = (v) =>
   String(v ?? "")
     .replace(/['"]/g, "")
-    .replace(/\D/g, "")        // digits only
-    .replace(/^0+/, "");       // strip leading zeros
+    .replace(/\D/g, "") // digits only
+    .replace(/^0+/, ""); // strip leading zeros
 
 function buildHeaderMap(row) {
   // de-duplicate headers Papa may rename: "Foo","Foo-1"
@@ -54,20 +60,112 @@ function toNumSafe(v) {
   return Number.isNaN(n) ? NaN : n;
 }
 
-/** -------- CSV loader (keeps leading zeros) -------- */
+/** --------------------- robust path resolution ------------------------
+ * Try several safe URL candidates so mobile & prod builds work:
+ *   1) as-is (if absolute)
+ *   2) BASE_URL + path
+ *   3) /data/... (Vite public mapping)
+ *   4) /public/data/... (legacy/development)
+ * The first HEAD/GET that returns 200 is used.
+ * ----------------------------------------------------------------------*/
+function baseUrl() {
+  const b = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
+  return b || "";
+}
+function ensureLeadingSlash(p) {
+  return p.startsWith("/") ? p : `/${p}`;
+}
+function toCandidates(p) {
+  const asGiven = p.startsWith("/") ? p : ensureLeadingSlash(p);
+  const b = baseUrl();
+  const stripped = asGiven.replace(/^\/public\//, "/"); // /public/data/foo.csv -> /data/foo.csv
+
+  // If caller supplied something like /data/foo.csv we still try alternatives.
+  const isDataPath = /^\/data\//i.test(stripped);
+  const dataPath = stripped;
+  const publicPath = stripped.replace(/^\/data\//, "/public/data/");
+
+  const list = new Set();
+
+  // 1) as given
+  list.add(asGiven);
+
+  // 2) base + asGiven (in case app is mounted under subpath)
+  list.add(`${b}${asGiven}`);
+
+  // 3) prefer /data/... (correct for Vite public)
+  if (!isDataPath) list.add(`/data${asGiven}`);
+
+  // 4) explicit /data path and its base-prefixed version
+  list.add(dataPath);
+  list.add(`${b}${dataPath}`);
+
+  // 5) legacy /public/data fallback
+  list.add(publicPath);
+  list.add(`${b}${publicPath}`);
+
+  return Array.from(list);
+}
+
+async function head(url) {
+  try {
+    const r = await fetch(url, { method: "HEAD", cache: "no-cache" });
+    return r.status;
+  } catch {
+    return 0;
+  }
+}
+async function get(url) {
+  try {
+    const r = await fetch(url, { method: "GET", cache: "force-cache" });
+    return { ok: r.ok, status: r.status, text: r.ok ? await r.text() : "" };
+  } catch {
+    return { ok: false, status: 0, text: "" };
+  }
+}
+
+const debugCSV = () => new URLSearchParams(globalThis.location?.search || "").has("debug");
+
+/** ---------------- CSV loader (keeps leading zeros) ------------------- */
 let _campCache = null;
 
 async function loadCampusesCSV() {
   if (_campCache) return _campCache;
 
-  const text = await fetch(CAMPUSES_CSV, { cache: "force-cache" }).then((r) => {
-    if (!r.ok) throw new Error(`Campus CSV fetch ${r.status}: ${CAMPUSES_CSV}`);
-    return r.text();
-  });
+  const candidates = toCandidates(CAMPUSES_CSV);
+  let text = "";
+  let usedUrl = null;
+  let bytes = 0;
+
+  for (const u of candidates) {
+    const hs = await head(u);
+    const g = await get(u);
+    if (g.ok && g.text) {
+      text = g.text;
+      usedUrl = u;
+      bytes = g.text.length;
+      break;
+    }
+  }
+
+  if (!text) {
+    throw new Error(
+      `[Campuses] CSV not found. Tried: ${candidates.join(", ")}`
+    );
+  }
+
+  if (debugCSV()) {
+    console.log("[fetchCSV] diag", {
+      baseUrl: baseUrl() || "/",
+      bytes,
+      okUrl: usedUrl,
+      tried: candidates,
+    });
+  }
 
   const parsed = Papa.parse(text, {
     header: true,
-    dynamicTyping: false,   // keep IDs as strings
+    dynamicTyping: false, // keep IDs as strings
     skipEmptyLines: true,
     worker: false,
   });
@@ -141,11 +239,7 @@ async function loadCampusesCSV() {
       ["Grades", "GRADE_RANGE", "USER_Grade_Range"],
       [/grade.*range/i, /^grades?$/i]
     ),
-    ENROLLMENT: bestHeader(
-      row0,
-      ["Enrollment", "ENROLLMENT"],
-      [/enroll/i]
-    ),
+    ENROLLMENT: bestHeader(row0, ["Enrollment", "ENROLLMENT"], [/enroll/i]),
     READING_OGR: bestHeader(
       row0,
       ["Reading OGL", "Reading On Grade-Level", "READING_OGL", "READING OGL"],
@@ -178,40 +272,16 @@ async function loadCampusesCSV() {
       ],
       [/math.*not.*grade/i]
     ),
-    ATTEND_RATE: bestHeader(
-      row0,
-      ["Attendance Rate", "ATTENDANCE_RATE"],
-      [/attendance/i]
-    ),
+    ATTEND_RATE: bestHeader(row0, ["Attendance Rate", "ATTENDANCE_RATE"], [/attendance/i]),
     CHRONIC_ABS: bestHeader(
       row0,
-      [
-        "Chronic Absenteeism Rate",
-        "Chronic Absenteeism",
-        "CHRONIC_ABSENTEEISM_RATE",
-      ],
+      ["Chronic Absenteeism Rate", "Chronic Absenteeism", "CHRONIC_ABSENTEEISM_RATE"],
       [/absentee/i]
     ),
-    TEACHER_COUNT: bestHeader(
-      row0,
-      ["Teacher Count", "TEACHERS", "TEACHER_COUNT"],
-      [/teacher.*count/i]
-    ),
-    ADMIN_COUNT: bestHeader(
-      row0,
-      ["Admin Count", "ADMIN_COUNT", "Administrators"],
-      [/admin.*count/i]
-    ),
-    AVG_ADMIN_SAL: bestHeader(
-      row0,
-      ["Average Admin Salary", "ADMIN_AVG_SALARY", "AVG_ADMIN_SAL"],
-      [/admin.*salary/i]
-    ),
-    AVG_TEACH_SAL: bestHeader(
-      row0,
-      ["Average Teacher Salary", "TEACHER_AVG_SALARY", "AVG_TEACH_SAL"],
-      [/teacher.*salary/i]
-    ),
+    TEACHER_COUNT: bestHeader(row0, ["Teacher Count", "TEACHERS", "TEACHER_COUNT"], [/teacher.*count/i]),
+    ADMIN_COUNT: bestHeader(row0, ["Admin Count", "ADMIN_COUNT", "Administrators"], [/admin.*count/i]),
+    AVG_ADMIN_SAL: bestHeader(row0, ["Average Admin Salary", "ADMIN_AVG_SALARY", "AVG_ADMIN_SAL"], [/admin.*salary/i]),
+    AVG_TEACH_SAL: bestHeader(row0, ["Average Teacher Salary", "TEACHER_AVG_SALARY", "AVG_TEACH_SAL"], [/teacher.*salary/i]),
   };
 
   // Resolve to *actual* keys present (using the header map)
@@ -224,7 +294,7 @@ async function loadCampusesCSV() {
   return _campCache;
 }
 
-/** -------- public API -------- */
+/** ------------------------------ public API --------------------------- */
 
 export async function getAllCampuses() {
   // convenience for listing page
@@ -239,16 +309,13 @@ export async function getCampusesForDistrict(districtId) {
 
   let list = rows.filter((r) => r?.[kDist] != null && canonId(r[kDist]) === want);
 
-  // --- RESOLVED: keep all rows but sort by score (missing/zero -> Infinity so they appear last)
+  // Keep ALL rows but sort by score (lowest first). Missing/zero -> Infinity so they appear last.
   const kScore = fields.CAMPUS_SCORE;
   if (kScore) {
     list = list
       .map((r) => {
         const s = toNumSafe(r[kScore]);
-        return {
-          row: r,
-          score: Number.isFinite(s) && s > 0 ? s : Infinity,
-        };
+        return { row: r, score: Number.isFinite(s) && s > 0 ? s : Infinity };
       })
       .sort((a, b) => a.score - b.score)
       .map((o) => o.row);
@@ -300,9 +367,7 @@ export async function getCampusFeatureById(campusId) {
 
   const kId = fields.CAMPUS_ID;
   if (!latKey || !lonKey || !kId) return null;
-  const row = rows.find(
-    (r) => r[latKey] && r[lonKey] && canonId(r[kId]) === want
-  );
+  const row = rows.find((r) => r[latKey] && r[lonKey] && canonId(r[kId]) === want);
   if (!row) return null;
 
   return {
@@ -326,9 +391,7 @@ export async function getCampusFeaturesForDistrict(districtId) {
   if (CAMPUSES_GEOJSON) {
     try {
       const fc = await fetch(CAMPUSES_GEOJSON, { cache: "force-cache" }).then((r) => r.json());
-      const keys = [
-        "DISTRICT_N", "DISTRICT_ID", "LEAID", "LEA", "USER_District_Number",
-      ];
+      const keys = ["DISTRICT_N", "DISTRICT_ID", "LEAID", "LEA", "USER_District_Number"];
       const feats = (fc.features || []).filter((f) => {
         const p = f.properties || {};
         return keys.some((k) => p[k] != null && canonId(p[k]) === want);
@@ -367,7 +430,5 @@ export async function getCampusFeaturesForDistrict(districtId) {
       },
     }));
 
-  return pts.length
-    ? { type: "FeatureCollection", features: pts }
-    : null;
+  return pts.length ? { type: "FeatureCollection", features: pts } : null;
 }
