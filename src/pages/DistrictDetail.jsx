@@ -58,13 +58,19 @@ const toNumSafe = (v) => {
 const pick = (row, ...keys) => {
   for (const k of keys) {
     const v = row?.[k];
-    if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+    if (v !== undefined && v !== null) {
+      const s = String(v).trim();
+      if (s !== "" && s !== "." && s !== "-") return v;
+    }
   }
   return null;
 };
 
 const toNum = (v) => {
-  const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
+  if (v === null || v === undefined) return NaN;
+  const s = String(v).trim();
+  if (s === "" || s === "." || s === "-") return NaN;
+  const n = Number(s.replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : NaN;
 };
 
@@ -172,8 +178,13 @@ export default function DistrictDetail() {
         );
 
         const campusName = pick(r, "USER_School_Name", "CAMPUS_NAME", "Campus", "NAME");
-        const campusGrade =
-          pick(r, "Campus Grade", "CAMPUS_GRADE", "Campus_Rating", "RATING") || "—";
+        const campusGrade = pick(
+          r,
+          "Campus Grade",
+          "CAMPUS_GRADE",
+          "Campus_Rating",
+          "RATING"
+        );
         const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
 
         let readingNot = pick(
