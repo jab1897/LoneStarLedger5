@@ -2,6 +2,7 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
+import GradeScorePill from "../ui/GradeScorePill";
 import { fetchJSON, findFeatureByProp } from "../lib/staticData";
 import { usd, num } from "../lib/format";
 import LeafMap from "../ui/Map";
@@ -151,6 +152,9 @@ export default function DistrictDetail() {
   const principalSal = k("Average Principal Salary", "PRINCIPAL_SALARY");
   const superSalary = k("Superintendent Salary", "SUPERINTENDENT_SALARY");
 
+  const districtGrade = pickHdr(row, hdr, "District Grade", "DISTRICT_GRADE", "Grade");
+  const districtScore = k("District Score", "DISTRICT_SCORE", "Score");
+
   const perStudent = !Number.isNaN(perStudentCSV)
     ? perStudentCSV
     : !Number.isNaN(totalSpending) && !Number.isNaN(enrollment) && enrollment > 0
@@ -160,12 +164,13 @@ export default function DistrictDetail() {
   // campuses table rows
   const campusRows = React.useMemo(
     () =>
-      (campuses || []).map((r) => {
-        const campusId = pick(
-          r,
-          "USER_School_Number",
-          "CAMPUS_N",
-          "CAMPUS_ID",
+      (campuses || [])
+        .map((r) => {
+          const campusId = pick(
+            r,
+            "USER_School_Number",
+            "CAMPUS_N",
+            "CAMPUS_ID",
           "Campus Number",
           "Campus_Number",
           "ID"
@@ -176,59 +181,71 @@ export default function DistrictDetail() {
           pick(r, "Campus Grade", "CAMPUS_GRADE", "Campus_Rating", "RATING") || "—";
         const campusScore = toNum(pick(r, "Campus Score", "SCORE", "OVERALL_SCORE"));
 
-        let readingNot = pick(
-          r,
-          "Share of Students Not on Grade-Level: Reading",
-          "Reading Not on Grade-Level",
-          "READING_NOT_GL",
-          "READING_NOT_OGR"
+        const parsePct = (v) => {
+          const s = String(v ?? "").trim();
+          if (!s) return null;
+          if (/^\d+(\.\d+)?%$/.test(s)) {
+            const n = Number(s.replace(/%$/, ""));
+            return Number.isFinite(n) ? n / 100 : null;
+          }
+          const n = Number(s.replace(/[^0-9.\-]/g, ""));
+          if (!Number.isFinite(n)) return null;
+          return n > 1 ? n / 100 : n;
+        };
+
+        const readingNot = parsePct(
+          pick(
+            r,
+            "Share of Students Not on Grade-Level: Reading",
+            "Reading Not On Grade-Level",
+            "Reading Not on Grade-Level",
+            "READING_NOT_GL",
+            "READING_NOT_OGR"
+          )
         );
-        let mathNot = pick(
-          r,
-          "Share of Students Not on Grade-Level: Math",
-          "Math Not on Grade-Level",
-          "MATH_NOT_GL",
-          "MATH_NOT_OGR"
+        const mathNot = parsePct(
+          pick(
+            r,
+            "Share of Students Not on Grade-Level: Math",
+            "Math Not On Grade-Level",
+            "Math Not on Grade-Level",
+            "MATH_NOT_GL",
+            "MATH_NOT_OGR"
+          )
         );
 
-        if (readingNot === null) {
-          const readOGL = pick(
+        const teacherSalary = toNum(
+          pick(
             r,
-            "Reading On Grade-Level",
-            "READING_OGR",
-            "READING_OGL",
-            "Reading OGL"
-          );
-          if (readOGL !== null) {
-            const n = toNum(readOGL);
-            readingNot = Number.isFinite(n) ? Math.max(0, Math.min(1, 1 - n)) : null;
-          }
-        }
-        if (mathNot === null) {
-          const mathOGL = pick(
+            "Average Teacher Salary",
+            "TEACHER_AVG_SALARY",
+            "AVG_TEACH_SAL",
+            "AVG_TEACHER_SALARY"
+          )
+        );
+        const adminSalary = toNum(
+          pick(
             r,
-            "Math On Grade-Level",
-            "MATH_OGR",
-            "MATH_OGL",
-            "Math OGL"
-          );
-          if (mathOGL !== null) {
-            const n = toNum(mathOGL);
-            mathNot = Number.isFinite(n) ? Math.max(0, Math.min(1, 1 - n)) : null;
-          }
-        }
+            "Average Admin Salary",
+            "ADMIN_AVG_SALARY",
+            "AVG_ADMIN_SAL",
+            "AVG_ADMIN_SALARY"
+          )
+        );
 
         return {
           campusId,
           campusName,
           campusGrade,
-          campusScore: Number.isFinite(campusScore) ? campusScore : NaN,
+          campusScore:
+            Number.isFinite(campusScore) && campusScore > 0 ? campusScore : Infinity,
           readingNot,
           mathNot,
-          teachers: toNum(r["Teacher Count"]),
-          admins: toNum(r["Admin Count"]),
+          teacherSalary: Number.isFinite(teacherSalary) ? teacherSalary : null,
+          adminSalary: Number.isFinite(adminSalary) ? adminSalary : null,
         };
-      }),
+        })
+        .filter((r) => r.campusName),
     [campuses]
   );
 
@@ -284,16 +301,16 @@ export default function DistrictDetail() {
       format: (v) => (v == null ? "—" : toPct(v)),
     },
     {
-      key: "teachers",
-      label: "Teachers",
+      key: "teacherSalary",
+      label: "Avg Teacher Salary",
       align: "right",
-      format: (v) => (Number.isFinite(v) ? v.toLocaleString() : "—"),
+      format: (v) => (Number.isFinite(v) ? usd.format(v) : "—"),
     },
     {
-      key: "admins",
-      label: "Admins",
+      key: "adminSalary",
+      label: "Avg Admin Salary",
       align: "right",
-      format: (v) => (Number.isFinite(v) ? v.toLocaleString() : "—"),
+      format: (v) => (Number.isFinite(v) ? usd.format(v) : "—"),
     },
   ];
 
@@ -315,6 +332,12 @@ export default function DistrictDetail() {
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
             <p className="text-gray-600 mt-1">{county}</p>
+            {(districtGrade || Number.isFinite(districtScore)) && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="font-bold">District Grade</span>
+                <GradeScorePill grade={districtGrade} score={districtScore} />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -356,7 +379,7 @@ export default function DistrictDetail() {
         <DataTable
           columns={campusCols}
           rows={filteredCampuses}
-          initialSort={{ key: "campusScore", dir: "desc" }}
+          initialSort={{ key: "campusScore", dir: "asc" }}
         />
       </section>
     </div>

@@ -6,7 +6,7 @@ const CAMPUSES_CSV =
   import.meta.env.VITE_CAMPUSES_CSV || "/data/Schools_2024_to_2025.csv";
 
 const CAMPUSES_GEOJSON =
-  import.meta.env.VITE_CAMPUSES_GEOJSON || null;
+  import.meta.env.VITE_CAMPUSES_GEOJSON || "/data/Schools_2024_to_2025.geojson";
 
 /** -------- helpers -------- */
 const norm = (s) =>
@@ -169,7 +169,6 @@ async function loadCampusesCSV() {
   }
 
   _campCache = { rows, fields };
-  console.info("[Campuses] detected fields:", fields, "CSV headers:", Object.keys(row0));
   return _campCache;
 }
 
@@ -188,16 +187,15 @@ export async function getCampusesForDistrict(districtId) {
 
   let list = rows.filter((r) => r?.[kDist] != null && canonId(r[kDist]) === want);
 
-  // sort by Campus Score desc (if present)
+  // Sort campuses by score (lowest first) but keep rows lacking scores
   const kScore = fields.CAMPUS_SCORE;
   if (kScore) {
     list = list.sort((a, b) => {
       const A = toNumSafe(a[kScore]);
       const B = toNumSafe(b[kScore]);
-      if (Number.isNaN(A) && Number.isNaN(B)) return 0;
-      if (Number.isNaN(A)) return 1;
-      if (Number.isNaN(B)) return -1;
-      return B - A;
+      const aVal = Number.isFinite(A) && A > 0 ? A : Infinity;
+      const bVal = Number.isFinite(B) && B > 0 ? B : Infinity;
+      return aVal - bVal;
     });
   }
   return { rows: list, fields };
@@ -209,6 +207,60 @@ export async function getCampusById(campusId) {
   const kId = fields.CAMPUS_ID;
   const row = kId ? rows.find((r) => canonId(r[kId]) === want) : null;
   return { row: row || null, fields };
+}
+
+export async function getCampusFeatureById(campusId) {
+  const want = canonId(campusId);
+
+  if (CAMPUSES_GEOJSON) {
+    try {
+      const fc = await fetch(CAMPUSES_GEOJSON, { cache: "force-cache" }).then((r) => r.json());
+      const keys = [
+        "CAMPUS_ID",
+        "CAMPUS",
+        "CAMPUS_N",
+        "USER_School_Number",
+        "School Number",
+        "SCHOOL_NUMBER",
+        "ID",
+      ];
+      const feat = (fc.features || []).find((f) => {
+        const p = f.properties || {};
+        return keys.some((k) => p[k] != null && canonId(p[k]) === want);
+      });
+      if (feat) return feat;
+    } catch (e) {
+      console.warn("[Campuses] campus GeoJSON load failed:", e);
+    }
+  }
+
+  // fallback: synthesize from CSV if lat/lon exist
+  const { rows, fields } = await loadCampusesCSV();
+  const row0 = rows[0] || {};
+  const latKey =
+    bestHeader(row0, ["LAT", "Latitude", "Y"], [/^lat$/i, /latitude/i]) || null;
+  const lonKey =
+    bestHeader(row0, ["LON", "LONG", "Longitude", "X"], [/^lon$|^lng$/i, /long/i, /longitude/i]) || null;
+
+  const kId = fields.CAMPUS_ID;
+  if (!latKey || !lonKey || !kId) return null;
+  const row = rows.find(
+    (r) => r[latKey] && r[lonKey] && canonId(r[kId]) === want
+  );
+  if (!row) return null;
+
+  return {
+    type: "Feature",
+    properties: {
+      CAMPUS_ID: fields.CAMPUS_ID ? row[fields.CAMPUS_ID] : "",
+      CAMPUS_NAME: fields.CAMPUS_NAME ? row[fields.CAMPUS_NAME] : "",
+      CAMPUS_SCORE: fields.CAMPUS_SCORE ? row[fields.CAMPUS_SCORE] : "",
+    },
+    geometry: {
+      type: "Point",
+      coordinates: [Number(row[lonKey]), Number(row[latKey])],
+    },
+  };
 }
 
 export async function getCampusFeaturesForDistrict(districtId) {
