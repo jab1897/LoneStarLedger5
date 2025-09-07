@@ -1,4 +1,3 @@
-// src/pages/DistrictDetail.jsx
 import React from "react";
 import { Link, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
