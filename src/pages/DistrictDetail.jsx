@@ -212,8 +212,8 @@ export default function DistrictDetail() {
     if (!Number.isFinite(v)) return "gray";
     const p = v > 1 ? v : v * 100;
     if (p <= 10) return "green";
-    if (p > 10 && p <= 20) return "yellow";
-    if (p > 20 && p <= 30) return "amber";
+    if (p <= 20) return "yellow";
+    if (p <= 40) return "amber";
     if (p > 40) return "red";
     return "gray";
   };
@@ -310,6 +310,16 @@ export default function DistrictDetail() {
     return list;
   }, [campusRows, campSearch]);
 
+  const sortedCampuses = React.useMemo(
+    () => [...filteredCampuses].sort((a, b) => a.campusScore - b.campusScore),
+    [filteredCampuses]
+  );
+
+  const visibleCampuses = React.useMemo(
+    () => (campSearch ? sortedCampuses : sortedCampuses.slice(0, 15)),
+    [sortedCampuses, campSearch]
+  );
+
   const campusCols = [
     {
       key: "campusName",
@@ -392,30 +402,34 @@ export default function DistrictDetail() {
             <StatPill label="Enrollment" value={Number.isNaN(enrollment) ? "—" : num.format(enrollment)} />
             <StatPill label="Per-Pupil Spending" value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
             <StatPill label="Total District Spending" value={Number.isNaN(totalSpending) ? "—" : usd.format(totalSpending)} />
-            <StatPill label="District debt" value={Number.isNaN(districtDebt) ? "—" : usd.format(districtDebt)} />
-            <StatPill label="Per‑pupil debt" value={Number.isNaN(perPupilDebt) ? "—" : usd.format(perPupilDebt)} />
+            <StatPill label="District Debt" value={Number.isNaN(districtDebt) ? "—" : usd.format(districtDebt)} />
+            <StatPill label="Per-Pupil Debt" value={Number.isNaN(perPupilDebt) ? "—" : usd.format(perPupilDebt)} />
             <StatPill label="Average Teacher Salary" value={Number.isNaN(teacherSalary) ? "—" : usd.format(teacherSalary)} />
             <StatPill label="Average Principal Salary" value={Number.isNaN(principalSal) ? "—" : usd.format(principalSal)} />
-            <StatPill label="Superintendent" value={Number.isNaN(superSalary) ? "—" : usd.format(superSalary)} />
+            <StatPill label="Superintendent Salary" value={Number.isNaN(superSalary) ? "—" : usd.format(superSalary)} />
             <StatPill
               label="Not On Grade Level Reading"
               value={Number.isFinite(readingNot) ? toPct(readingNot) : "-"}
               color={pctColor(readingNot)}
+              boldLabel
             />
             <StatPill
               label="Not On Grade Level Math"
               value={Number.isFinite(mathNot) ? toPct(mathNot) : "-"}
               color={pctColor(mathNot)}
+              boldLabel
             />
             <StatPill
-              label="Not On Grade Level SS"
+              label="Not On Grade Level Social Studies"
               value={Number.isFinite(ssNot) ? toPct(ssNot) : "-"}
               color={pctColor(ssNot)}
+              boldLabel
             />
             <StatPill
               label="Not On Grade Level Science"
               value={Number.isFinite(scienceNot) ? toPct(scienceNot) : "-"}
               color={pctColor(scienceNot)}
+              boldLabel
             />
           </div>
         </div>
@@ -446,7 +460,7 @@ export default function DistrictDetail() {
 
         <DataTable
           columns={campusCols}
-          rows={filteredCampuses}
+          rows={visibleCampuses}
           initialSort={{ key: "campusScore", dir: "asc" }}
         />
       </section>
