@@ -453,7 +453,7 @@ export default function DistrictDetail() {
 
         <input
           className="border rounded-xl px-3 py-2 w-full md:w-96"
-          placeholder="Search campus name or ID"
+          placeholder="Don't See Your School? Search for It Here"
           value={campSearch}
           onChange={(e) => setCampSearch(e.target.value)}
         />
