@@ -162,6 +162,43 @@ export default function DistrictDetail() {
   const principalSal = k("Average Principal Salary", "PRINCIPAL_SALARY");
   const superSalary = k("Superintendent Salary", "SUPERINTENDENT_SALARY");
 
+  const readingNot = toNum(
+    pickHdr(
+      row,
+      hdr,
+      "Not On Grade Level Reading",
+      "Reading Not On Grade Level",
+      "Reading Not on Grade-Level"
+    )
+  );
+  const mathNot = toNum(
+    pickHdr(
+      row,
+      hdr,
+      "Not On Grade Level Math",
+      "Math Not On Grade Level",
+      "Math Not on Grade-Level"
+    )
+  );
+  const ssNot = toNum(
+    pickHdr(
+      row,
+      hdr,
+      "Not On Grade Level SS",
+      "Not On Grade Level Social Studies",
+      "Social Studies Not On Grade Level"
+    )
+  );
+  const scienceNot = toNum(
+    pickHdr(
+      row,
+      hdr,
+      "Not On Grade Level Science",
+      "Science Not On Grade Level",
+      "Science Not on Grade-Level"
+    )
+  );
+
   const districtGrade = pickHdr(row, hdr, "District Grade", "DISTRICT_GRADE", "Grade");
   const districtScore = k("District Score", "DISTRICT_SCORE", "Score");
 
@@ -170,6 +207,16 @@ export default function DistrictDetail() {
     : !Number.isNaN(totalSpending) && !Number.isNaN(enrollment) && enrollment > 0
     ? totalSpending / enrollment
     : NaN;
+
+  const pctColor = (v) => {
+    if (!Number.isFinite(v)) return "gray";
+    const p = v > 1 ? v : v * 100;
+    if (p <= 10) return "green";
+    if (p > 10 && p <= 20) return "yellow";
+    if (p > 20 && p <= 30) return "amber";
+    if (p > 40) return "red";
+    return "gray";
+  };
 
   // campuses table rows
   const campusRows = React.useMemo(
@@ -335,7 +382,7 @@ export default function DistrictDetail() {
             <p className="text-gray-600 mt-1">{county}</p>
             {(districtGrade || Number.isFinite(districtScore)) && (
               <div className="mt-3 flex items-center gap-2">
-                <span className="font-bold">District Grade</span>
+                <span className="font-bold">TEA's District Grade</span>
                 <GradeScorePill grade={districtGrade} score={districtScore} />
               </div>
             )}
@@ -343,19 +390,39 @@ export default function DistrictDetail() {
 
           <div className="flex flex-wrap gap-2">
             <StatPill label="Enrollment" value={Number.isNaN(enrollment) ? "—" : num.format(enrollment)} />
-            <StatPill label="Per pupil" value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
-            <StatPill label="Total spend" value={Number.isNaN(totalSpending) ? "—" : usd.format(totalSpending)} />
+            <StatPill label="Per-Pupil Spending" value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
+            <StatPill label="Total District Spending" value={Number.isNaN(totalSpending) ? "—" : usd.format(totalSpending)} />
             <StatPill label="District debt" value={Number.isNaN(districtDebt) ? "—" : usd.format(districtDebt)} />
             <StatPill label="Per‑pupil debt" value={Number.isNaN(perPupilDebt) ? "—" : usd.format(perPupilDebt)} />
-            <StatPill label="Teacher salary" value={Number.isNaN(teacherSalary) ? "—" : usd.format(teacherSalary)} />
-            <StatPill label="Principal salary" value={Number.isNaN(principalSal) ? "—" : usd.format(principalSal)} />
+            <StatPill label="Average Teacher Salary" value={Number.isNaN(teacherSalary) ? "—" : usd.format(teacherSalary)} />
+            <StatPill label="Average Principal Salary" value={Number.isNaN(principalSal) ? "—" : usd.format(principalSal)} />
             <StatPill label="Superintendent" value={Number.isNaN(superSalary) ? "—" : usd.format(superSalary)} />
+            <StatPill
+              label="Not On Grade Level Reading"
+              value={Number.isFinite(readingNot) ? toPct(readingNot) : "-"}
+              color={pctColor(readingNot)}
+            />
+            <StatPill
+              label="Not On Grade Level Math"
+              value={Number.isFinite(mathNot) ? toPct(mathNot) : "-"}
+              color={pctColor(mathNot)}
+            />
+            <StatPill
+              label="Not On Grade Level SS"
+              value={Number.isFinite(ssNot) ? toPct(ssNot) : "-"}
+              color={pctColor(ssNot)}
+            />
+            <StatPill
+              label="Not On Grade Level Science"
+              value={Number.isFinite(scienceNot) ? toPct(scienceNot) : "-"}
+              color={pctColor(scienceNot)}
+            />
           </div>
         </div>
       </header>
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <h2 className="text-xl font-bold">Geometry</h2>
+        <h2 className="text-xl font-bold">District Boundary</h2>
         {geom ? <LeafMap geom={geom} height={420} /> : <p className="text-gray-600">No geometry found.</p>}
       </section>
 
