@@ -25,6 +25,16 @@ const toPct = (v, digits = 1) => {
   return `${(clamped * 100).toFixed(digits)}%`;
 };
 
+const pctColor = (v) => {
+  if (!Number.isFinite(v)) return "gray";
+  const p = v > 1 ? v : v * 100;
+  if (p <= 10) return "green";
+  if (p <= 20) return "yellow";
+  if (p <= 40) return "amber";
+  if (p > 40) return "red";
+  return "gray";
+};
+
 const normKey = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 
 export default function CampusDetail() {
@@ -138,17 +148,27 @@ export default function CampusDetail() {
               label="Enrollment"
               value={Number.isNaN(enrollmentNum) ? "—" : num.format(enrollmentNum)}
             />
-            <StatPill label="Reading Not On Grade-Level" value={toPct(readingNot)} />
-            <StatPill label="Math Not On Grade-Level" value={toPct(mathNot)} />
             <StatPill label="Attendance Rate" value={toPct(attendanceRate)} />
             <StatPill label="Chronic Absenteeism Rate" value={toPct(chronicAbs)} />
             <StatPill
-              label="Teacher Salary"
+              label="Average Teacher Salary"
               value={Number.isNaN(teacherSalary) ? "—" : usd.format(teacherSalary)}
             />
             <StatPill
               label="Average Admin Salary"
               value={Number.isNaN(adminSalary) ? "—" : usd.format(adminSalary)}
+            />
+            <StatPill
+              label="Not On Grade Level Reading"
+              value={Number.isFinite(readingNot) ? toPct(readingNot) : "-"}
+              color={pctColor(readingNot)}
+              boldLabel
+            />
+            <StatPill
+              label="Not On Grade Level Math"
+              value={Number.isFinite(mathNot) ? toPct(mathNot) : "-"}
+              color={pctColor(mathNot)}
+              boldLabel
             />
           </div>
         </div>
