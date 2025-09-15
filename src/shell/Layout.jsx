@@ -31,6 +31,14 @@ function TopBar() {
             >
               Why No Amount of Money is Enough
             </NavLink>
+            <NavLink
+              to="/solutions"
+              className={({ isActive }) =>
+                `hover:text-blue-700 ${isActive ? 'text-blue-700' : 'text-gray-600'}`
+              }
+            >
+              Solutions
+            </NavLink>
           <NavLink to="/about" className={({isActive})=>`hover:text-blue-700 ${isActive?'text-blue-700':'text-gray-600'}`}>About</NavLink>
         </nav>
         <div className="ml-auto w-full md:w-96">
