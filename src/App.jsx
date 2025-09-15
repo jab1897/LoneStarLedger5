@@ -10,6 +10,7 @@ import CampusDetail from "./pages/CampusDetail";
 import Search from "./pages/Search";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
+import Solutions from "./pages/Solutions";
 import ErrorBoundary from "./shell/ErrorBoundary";
 
 // Lazy-load the money explainer page so it doesn't evaluate unless visited
@@ -28,10 +29,11 @@ export default function App() {
               <Route path="/campuses" element={<Campuses />} />
               <Route path="/campus/:id" element={<CampusDetail />} />
               <Route path="/search" element={<Search />} />
-                <Route
-                  path="/why-no-amount-of-money-is-enough"
-                  element={<WhyNoAmount />}
-                />
+              <Route
+                path="/why-no-amount-of-money-is-enough"
+                element={<WhyNoAmount />}
+              />
+              <Route path="/solutions" element={<Solutions />} />
               <Route path="/about" element={<About />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
