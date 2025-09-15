@@ -1,4 +1,3 @@
-// src/pages/WhyNoAmount.jsx
 import React from "react";
 import VideoEmbed from "../ui/VideoEmbed";
 

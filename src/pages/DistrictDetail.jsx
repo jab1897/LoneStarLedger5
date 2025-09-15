@@ -8,6 +8,7 @@ import LeafMap from "../ui/Map";
 import DataTable from "../ui/DataTable";
 import { loadDistrictsCSV } from "../lib/data";
 import { getCampusesForDistrict } from "../lib/campuses";
+import DistrictSpendingPie from "../components/DistrictSpendingPie";
 
 const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON =
@@ -91,6 +92,7 @@ export default function DistrictDetail() {
   const [row, setRow] = React.useState(null);
   const [hdr, setHdr] = React.useState(new globalThis.Map());
   const [geom, setGeom] = React.useState(null);
+  const [districtDataset, setDistrictDataset] = React.useState(null);
 
   // campuses
   const [campuses, setCampuses] = React.useState([]);
@@ -107,7 +109,10 @@ export default function DistrictDetail() {
     (async () => {
       try {
         // Districts (for KPIs + name)
-        const { rows, fields: F } = await loadDistrictsCSV(DISTRICTS_CSV);
+        const data = await loadDistrictsCSV(DISTRICTS_CSV);
+        if (!alive) return;
+        setDistrictDataset(data);
+        const { rows, fields: F } = data;
         const found = rows.find((r) => String(r[F.ID] ?? "") === String(id)) || null;
         setRow(found);
         setHdr(buildHeaderMap(found || rows[0] || {}));
@@ -434,6 +439,13 @@ export default function DistrictDetail() {
           </div>
         </div>
       </header>
+
+      <DistrictSpendingPie
+        dataset={districtDataset}
+        districtId={id}
+        districtName={displayName}
+        className="mt-6"
+      />
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
         <h2 className="text-xl font-bold">District Boundary</h2>
