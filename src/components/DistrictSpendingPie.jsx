@@ -42,10 +42,9 @@ const TOTAL_FIELD_CANDIDATES = [
   "TOTAL EXPENSES",
 ];
 
-const SIZE = 320;
+const SIZE = 300;
 const RADIUS = SIZE / 2;
-const INNER_RADIUS = RADIUS * 0.58;
-const LABEL_RADIUS = (RADIUS + INNER_RADIUS) / 2;
+const INNER_RADIUS = RADIUS * 0.6;
 
 const LIGHTEN_DELTA = 0.1;
 
@@ -347,8 +346,8 @@ const DistrictSpendingPie = forwardRef(function DistrictSpendingPie(
 
   if (!data.row) {
     return (
-      <section className={`bg-white border rounded-2xl p-6 ${className}`}>
-        <h2 className="text-xl font-bold">District spending breakdown FY 2025</h2>
+      <section className={`bg-white border rounded-2xl p-6 shadow-sm max-w-4xl mx-auto text-center ${className}`}>
+        <h2 className="text-2xl font-semibold text-gray-900">District spending breakdown</h2>
         <p className="text-gray-600 mt-2">No spending data available for this district.</p>
       </section>
     );
@@ -356,8 +355,8 @@ const DistrictSpendingPie = forwardRef(function DistrictSpendingPie(
 
   if (!data.total) {
     return (
-      <section className={`bg-white border rounded-2xl p-6 ${className}`}>
-        <h2 className="text-xl font-bold">District spending breakdown FY 2025</h2>
+      <section className={`bg-white border rounded-2xl p-6 shadow-sm max-w-4xl mx-auto text-center ${className}`}>
+        <h2 className="text-2xl font-semibold text-gray-900">District spending breakdown</h2>
         <p className="text-gray-600 mt-2">
           We don’t have spending details for this district yet. Please check back soon.
         </p>
@@ -365,29 +364,32 @@ const DistrictSpendingPie = forwardRef(function DistrictSpendingPie(
     );
   }
 
-  const ariaLabel = `Spending breakdown pie chart for ${districtName || `district ${districtId}`} in fiscal year 2025`;
+  const cleanedName = districtName && String(districtName).trim();
+  const ariaLabel = `Spending breakdown pie chart for ${cleanedName || `district ${districtId}`}`;
+  const subtitle = cleanedName || `District ${districtId}`;
 
   return (
-    <section className={`bg-white border rounded-2xl p-6 ${className}`}>
-      <header className="space-y-1">
-        <h2 className="text-xl font-bold">District spending breakdown FY 2025</h2>
-        <p className="text-gray-600">{districtName ? `${districtName} (DISTRICT_N ${districtId})` : `DISTRICT_N ${districtId}`}</p>
+    <section className={`bg-white border rounded-2xl p-6 shadow-sm max-w-4xl mx-auto ${className}`}>
+      <header className="space-y-2 text-center">
+        <h2 className="text-2xl font-semibold text-gray-900">District spending breakdown</h2>
+        <p className="text-base text-gray-600">{subtitle}</p>
       </header>
 
-      <div className="mt-6 flex flex-col lg:flex-row lg:items-start gap-6">
+      <div className="mt-8 flex flex-col items-center gap-8 lg:flex-row lg:items-start lg:justify-center">
         <div className="flex-1 flex justify-center">
           <div
             ref={chartRef}
-            className="relative"
-            style={{ width: "min(100%, 520px)", maxWidth: 520 }}
+            className="relative flex items-center justify-center w-full"
+            style={{ width: "min(100%, 340px)", maxWidth: 340 }}
           >
             <svg
               ref={svgRef}
-              width="100%"
-              height="100%"
+              width={SIZE}
+              height={SIZE}
               viewBox={`0 0 ${SIZE} ${SIZE}`}
               role="img"
               aria-label={ariaLabel}
+              className="w-full h-auto"
             >
               <title>{ariaLabel}</title>
               {data.slices.map((slice) => {
@@ -410,22 +412,14 @@ const DistrictSpendingPie = forwardRef(function DistrictSpendingPie(
                       onFocus={() => handleLegendFocus(slice)}
                       onBlur={handleLegendBlur}
                     />
-                    {slice.percent > 0 && (
-                      <text
-                        x={polarToCartesian(RADIUS, RADIUS, LABEL_RADIUS, slice.midAngle).x}
-                        y={polarToCartesian(RADIUS, RADIUS, LABEL_RADIUS, slice.midAngle).y}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        className="text-xs font-semibold"
-                        fill="#111827"
-                      >
-                        {slice.labelText}
-                      </text>
-                    )}
                   </g>
                 );
               })}
             </svg>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span className="text-sm font-medium text-gray-500">Total</span>
+              <span className="text-lg font-semibold text-gray-900">{usd.format(data.total)}</span>
+            </div>
             {tooltip && (
               <div
                 className="pointer-events-none absolute bg-gray-900 text-white text-xs rounded-md px-2 py-1 shadow-lg"
@@ -443,41 +437,40 @@ const DistrictSpendingPie = forwardRef(function DistrictSpendingPie(
           </div>
         </div>
 
-        <div className="lg:w-64 space-y-3">
-          <h3 className="text-base font-semibold text-gray-900">Breakdown</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2">
-            {data.slices.map((slice) => (
-              <button
-                key={slice.id}
-                type="button"
-                className={`flex items-center justify-between rounded-full border px-3 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                  activeId === slice.id ? "bg-blue-50 border-blue-400" : "bg-white border-gray-200"
-                }`}
-                onMouseEnter={() => handleSliceEnter(slice)}
-                onMouseLeave={handleSliceLeave}
-                onFocus={() => handleLegendFocus(slice)}
-                onBlur={handleLegendBlur}
-              >
-                <span className="flex items-center gap-2">
-                  <span
-                    className="inline-block h-3 w-3 rounded-full"
-                    style={{
-                      backgroundColor: activeId === slice.id ? lighten(slice.color) : slice.color,
-                      boxShadow: "0 0 0 1px rgba(255,255,255,0.8)",
-                    }}
-                    aria-hidden="true"
-                  />
-                  <span className="font-medium text-gray-900">{slice.label}</span>
+        <div className="w-full max-w-sm flex flex-col gap-3">
+          {data.slices.map((slice) => (
+            <button
+              key={slice.id}
+              type="button"
+              className={`group flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                activeId === slice.id ? "border-blue-400 bg-blue-50" : "border-gray-200 bg-white hover:bg-slate-50"
+              }`}
+              onMouseEnter={() => handleSliceEnter(slice)}
+              onMouseLeave={handleSliceLeave}
+              onFocus={() => handleLegendFocus(slice)}
+              onBlur={handleLegendBlur}
+            >
+              <span
+                className="inline-flex h-3.5 w-3.5 shrink-0 rounded-full"
+                style={{
+                  backgroundColor: activeId === slice.id ? lighten(slice.color) : slice.color,
+                  boxShadow: "0 0 0 1px rgba(255,255,255,0.9)",
+                }}
+                aria-hidden="true"
+              />
+              <span className="flex flex-col">
+                <span className="text-sm font-medium text-gray-900">{slice.label}</span>
+                <span className="text-xs text-gray-600">
+                  {slice.percent.toFixed(1)}% • {usd.format(slice.value)}
                 </span>
-                <span className="text-gray-600">{slice.percent.toFixed(1)}%</span>
-              </button>
-            ))}
-          </div>
+              </span>
+            </button>
+          ))}
         </div>
       </div>
 
       {data.mismatch && (
-        <p className="mt-4 text-xs text-amber-700">
+        <p className="mt-6 text-xs text-amber-700 text-center">
           Note: file total differs from computed total by {usd.format(data.mismatch.diff)} and
           {" "}
           {data.mismatch.pct.toFixed(1)} percent for DISTRICT_N = {districtId}.
@@ -485,7 +478,7 @@ const DistrictSpendingPie = forwardRef(function DistrictSpendingPie(
       )}
 
       <table className="sr-only">
-        <caption>{`Spending details for ${districtName || districtId}`}</caption>
+        <caption>{`Spending details for ${cleanedName || districtId}`}</caption>
         <thead>
           <tr>
             <th scope="col">Category</th>

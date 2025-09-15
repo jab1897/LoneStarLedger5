@@ -440,7 +440,12 @@ export default function DistrictDetail() {
         </div>
       </header>
 
-      <DistrictSpendingPie dataset={districtDataset} districtId={id} districtName={displayName} />
+      <DistrictSpendingPie
+        dataset={districtDataset}
+        districtId={id}
+        districtName={displayName}
+        className="mt-6"
+      />
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
         <h2 className="text-xl font-bold">District Boundary</h2>
