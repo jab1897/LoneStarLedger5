@@ -47,7 +47,6 @@ const CENTER_X = VIEWBOX_WIDTH / 2;
 const CENTER_Y = VIEWBOX_HEIGHT / 2;
 const OUTER_RADIUS = 160;
 const INNER_RADIUS = OUTER_RADIUS * 0.58;
-const LABEL_RADIUS = OUTER_RADIUS + 34;
 
 const normalizeKey = (value) =>
   String(value || "")
@@ -369,12 +368,8 @@ const DistrictSpendingPie = React.forwardRef(function DistrictSpendingPie(
   return (
     <div className="flex flex-col">
       <div className="text-center space-y-1">
-        <h2 className="text-2xl font-bold tracking-tight">
-          District spending breakdown FY 2025
-        </h2>
-        <p className="text-gray-600">
-          {districtName} (DISTRICT_N {districtId})
-        </p>
+        <h2 className="text-2xl font-bold tracking-tight">District spending breakdown</h2>
+        {districtName ? <p className="text-gray-600">{districtName}</p> : null}
       </div>
 
       {isEmpty ? (
@@ -388,13 +383,13 @@ const DistrictSpendingPie = React.forwardRef(function DistrictSpendingPie(
               ref={svgRef}
               viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
               role="img"
-              aria-label={`Spending breakdown pie chart for ${districtName} in fiscal year 2025`}
+              aria-label={`Spending breakdown pie chart for ${districtName || "this district"}`}
               aria-describedby={tableId}
               className="w-full"
               onMouseLeave={handlePointerLeave}
             >
               <title id={titleId}>
-                Spending breakdown pie chart for {districtName} in fiscal year 2025
+                Spending breakdown pie chart for {districtName || "this district"}
               </title>
               <desc id={descId}>
                 Percentage allocation across teacher compensation, non-teacher compensation, capital outlay and debt service, other operating expenses, and recapture.
@@ -408,15 +403,6 @@ const DistrictSpendingPie = React.forwardRef(function DistrictSpendingPie(
                   slice.startAngle,
                   slice.endAngle
                 );
-                const labelPoint = polarToCartesian(CENTER_X, CENTER_Y, LABEL_RADIUS, slice.midAngle);
-                const anchor = labelPoint.x >= CENTER_X ? "start" : "end";
-                const lineStart = polarToCartesian(
-                  CENTER_X,
-                  CENTER_Y,
-                  OUTER_RADIUS + 8,
-                  slice.midAngle
-                );
-                const lineEnd = polarToCartesian(CENTER_X, CENTER_Y, LABEL_RADIUS - 8, slice.midAngle);
                 const fill = hoveredIndex === index ? lighten(slice.color, 0.1) : slice.color;
                 return (
                   <g key={slice.id}>
@@ -432,26 +418,6 @@ const DistrictSpendingPie = React.forwardRef(function DistrictSpendingPie(
                       onMouseLeave={handlePointerLeave}
                       aria-label={`${slice.label} ${slice.percentLabel} percent`}
                     />
-                    <line
-                      x1={lineStart.x}
-                      y1={lineStart.y}
-                      x2={lineEnd.x}
-                      y2={lineEnd.y}
-                      stroke="#CBD5F5"
-                      strokeWidth={1}
-                    />
-                    <text
-                      x={labelPoint.x}
-                      y={labelPoint.y}
-                      textAnchor={anchor}
-                      style={{
-                        fontSize: "12px",
-                        fill: "#1F2937",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {`${slice.label} ${slice.percentLabel} percent`}
-                    </text>
                   </g>
                 );
               })}
