@@ -110,11 +110,11 @@ export default function Home() {
     .sort((a, b) => a.score - b.score)
     .slice(0, 10)
     .map((r) => ({
-    id: r.id,
-    name: r.name,
-    grade: scoreToGrade(r.score),
-    score: r.score,
-  }));
+      id: r.id,
+      name: r.name,
+      grade: scoreToGrade(r.score),
+      score: r.score,
+    }));
 
   const supCols = [
     {
