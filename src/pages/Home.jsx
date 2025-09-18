@@ -110,11 +110,11 @@ export default function Home() {
     .sort((a, b) => a.score - b.score)
     .slice(0, 10)
     .map((r) => ({
-    id: r.id,
-    name: r.name,
-    grade: scoreToGrade(r.score),
-    score: r.score,
-  }));
+      id: r.id,
+      name: r.name,
+      grade: scoreToGrade(r.score),
+      score: r.score,
+    }));
 
   const supCols = [
     {
@@ -166,8 +166,16 @@ export default function Home() {
               value={fmtMoney(stats?.totalSpendingSum)}
               to="/why-no-amount-of-money-is-enough"
             />
-          <StatCard label="Enrollment" value={fmtInt(stats?.enrollmentTotal)} to="/districts" />
-          <StatCard label="Avg Per-Student Spending" value={fmtMoney(stats?.perStudentSpendingAvgFixed)} to="/districts" />
+          <StatCard
+            label="Enrollment (Excluding Charter Schools)"
+            value={fmtInt(stats?.enrollmentTotal)}
+            to="/districts"
+          />
+          <StatCard
+            label="Avg Per-Student Spending (Excluding Charter School Students)"
+            value={fmtMoney(19217)}
+            to="/districts"
+          />
           <StatCard label="District Debt" value={fmtMoney(stats?.districtDebtTotal)} to="/districts" />
           <StatCard label="Per-Pupil Debt" value={fmtMoney(stats?.perPupilDebtAvg)} to="/districts" />
           <StatCard label="Average Teacher Salary" value={fmtMoney(stats?.teacherSalaryAvg)} to="/districts" />
