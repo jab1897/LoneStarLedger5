@@ -81,7 +81,7 @@ export default function LongitudinalSpending() {
 
   return (
     <main className="px-4 md:px-8 space-y-8">
-      <h1 className="text-3xl font-extrabold">Spending over time</h1>
+      <h1 className="text-3xl font-extrabold">Trends in Spending</h1>
 
       {/* search and selected chips */}
       <div className="space-y-3">
