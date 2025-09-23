@@ -102,6 +102,69 @@ const COLORS = {
   recapture: "#FFC72C",
 };
 
+const OBJECT_LABEL_OVERRIDES = {
+  "BUILDING PURCHASE, CONSTRUCTION OR IMPROVEMENTS": "Building Purchases",
+  "CONSULTING SERVICES": "Consultants",
+  "PROFESSIONAL SERVICES": "Professional Services",
+  "MISCELLANEOUS CONTRACTED SERVICES": "Miscellaneous Contracts",
+};
+
+const DEFAULT_OBJECTS = [
+  "Building Purchases",
+  "Consultants",
+  "Professional Services",
+  "Miscellaneous Contracts",
+];
+
+const SMALL_WORDS = new Set(["and", "or", "the", "for", "of", "to", "a", "an", "in", "on", "by"]);
+const ACRONYM_WORDS = new Set([
+  "ADA",
+  "ACT",
+  "CTE",
+  "ELL",
+  "ESL",
+  "FICA",
+  "FTE",
+  "GT",
+  "IDEA",
+  "IRS",
+  "PEIMS",
+  "SAT",
+  "SSA",
+  "TEA",
+  "TRS",
+  "TSI",
+]);
+
+function toTitleCase(value) {
+  if (!value) return "";
+  const parts = String(value).split(/([\s\/\-&,]+)/);
+  return parts
+    .map((part, index) => {
+      if (/^[\s\/\-&,]+$/.test(part)) return part;
+      const lower = part.toLowerCase();
+      if (SMALL_WORDS.has(lower) && index !== 0 && index !== parts.length - 1) {
+        return lower;
+      }
+      if (ACRONYM_WORDS.has(part.toUpperCase())) {
+        return part.toUpperCase();
+      }
+      if (/^[0-9]+$/.test(lower)) {
+        return part;
+      }
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join("")
+    .replace(/\bId\b/g, "ID");
+}
+
+function getObjectLabel(raw) {
+  const base = String(raw || "").trim();
+  if (!base) return "";
+  const override = OBJECT_LABEL_OVERRIDES[base.toUpperCase()];
+  return override || toTitleCase(base);
+}
+
 export default function LongitudinalSpending() {
   const [totals, setTotals] = useState([]);     // rows with DISTRICT_N, District_Name, Year, Total_Spending
   const [objects, setObjects] = useState([]);   // rows with DISTRICT_N, District_Name, Year, Object_Description_Long, Object_Spending
@@ -109,6 +172,8 @@ export default function LongitudinalSpending() {
   const [error, setError] = useState("");
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(["STATEWIDE"]); // default statewide chip
+  const [selectedObjects, setSelectedObjects] = useState(DEFAULT_OBJECTS);
+  const [objectSelectValue, setObjectSelectValue] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -184,30 +249,73 @@ export default function LongitudinalSpending() {
 
   // Cost centers by object long across selected districts
   const costCenterSeries = useMemo(() => {
+    if (!selectedObjects.length) return [];
     const map = new Map(); // year -> { objectName: sum }
     objects.forEach(r => {
       if (!selected.includes(r.DISTRICT_N)) return;
       const y = Number(r.Year);
-      const name = r.Object_Description_Long;
+      if (!y) return;
+      const name = getObjectLabel(r.Object_Description_Long ?? r.Object_Long ?? r.OBJECTX_LONG ?? "");
+      if (!name) return;
       const m = map.get(y) || {};
       m[name] = (m[name] || 0) + toNumber(r.Object_Spending);
       map.set(y, m);
     });
     const ys = Array.from(map.keys()).sort((a, b) => a - b);
-    return ys.map(y => ({ Year: y, ...map.get(y) }));
-  }, [objects, selected]);
-
-  // choose top five object series to keep the legend readable
-  const topKeys = useMemo(() => {
-    const totalsByKey = {};
-    costCenterSeries.forEach(row => {
-      Object.keys(row).forEach(k => {
-        if (k === "Year") return;
-        totalsByKey[k] = (totalsByKey[k] || 0) + toNumber(row[k]);
+    return ys.map(y => {
+      const totalsForYear = map.get(y) || {};
+      const row = { Year: y };
+      selectedObjects.forEach(name => {
+        row[name] = totalsForYear[name] || 0;
       });
+      return row;
     });
-    return Object.entries(totalsByKey).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([k]) => k);
-  }, [costCenterSeries]);
+  }, [objects, selected, selectedObjects]);
+
+  const objectOptions = useMemo(() => {
+    const opts = new Set();
+    objects.forEach(r => {
+      const name = getObjectLabel(r.Object_Description_Long ?? r.Object_Long ?? r.OBJECTX_LONG ?? "");
+      if (name) opts.add(name);
+    });
+    return Array.from(opts).sort((a, b) => a.localeCompare(b));
+  }, [objects]);
+
+  useEffect(() => {
+    if (!objectOptions.length) return;
+    setSelectedObjects(prev => {
+      const filtered = prev.filter(name => objectOptions.includes(name));
+      let next = filtered;
+      if (filtered.length === 0) {
+        const fallback = DEFAULT_OBJECTS.filter(name => objectOptions.includes(name));
+        if (fallback.length) {
+          next = fallback;
+        } else {
+          next = objectOptions.slice(0, Math.min(5, objectOptions.length));
+        }
+      }
+      if (next.length === prev.length && next.every((name, idx) => name === prev[idx])) {
+        return prev;
+      }
+      return next;
+    });
+  }, [objectOptions]);
+
+  const addObject = (name) => {
+    if (!name) return;
+    setSelectedObjects(prev => (prev.includes(name) ? prev : [...prev, name]));
+  };
+
+  const removeObject = (name) => {
+    setSelectedObjects(prev => prev.filter(item => item !== name));
+  };
+
+  const handleObjectSelect = (event) => {
+    const { value } = event.target;
+    if (!value) return;
+    addObject(value);
+    setObjectSelectValue("");
+  };
 
   return (
     <main className="px-4 md:px-8 space-y-8">
@@ -249,10 +357,10 @@ export default function LongitudinalSpending() {
       <section>
         <h2 className="text-xl font-bold mb-2">Overall spending</h2>
         <ResponsiveContainer width="100%" height={320}>
-          <LineChart data={overallSeries}>
+          <LineChart data={overallSeries} margin={{ top: 16, right: 24, left: 48, bottom: 16 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="Year" />
-            <YAxis />
+            <YAxis width={140} tickFormatter={(value) => fmtMoney(value)} />
             <Tooltip formatter={(v) => fmtMoney(v)} />
             <Legend />
             <Line type="monotone" dataKey="Total" stroke={COLORS.total} dot={false} />
@@ -266,21 +374,58 @@ export default function LongitudinalSpending() {
       {/* Cost centers by object */}
       <section>
         <h2 className="text-xl font-bold mb-2">Cost centers by object</h2>
+        <div className="space-y-2 mb-4">
+          <label htmlFor="object-filter" className="block text-sm font-medium text-gray-700">
+            Add or remove cost centers
+          </label>
+          <select
+            id="object-filter"
+            value={objectSelectValue}
+            onChange={handleObjectSelect}
+            disabled={!objectOptions.length}
+            className="w-full max-w-sm border rounded px-3 py-2 bg-white"
+          >
+            <option value="" disabled>
+              {objectOptions.length ? "Select cost center" : "Loading cost centers"}
+            </option>
+            {objectOptions.map(name => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          <div className="flex flex-wrap gap-2">
+            {selectedObjects.map(name => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => removeObject(name)}
+                className="px-2 py-1 rounded bg-blue-100"
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
         <ResponsiveContainer width="100%" height={360}>
-          <BarChart data={costCenterSeries}>
+          <BarChart data={costCenterSeries} margin={{ top: 16, right: 24, left: 48, bottom: 16 }}>
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="Year" />
-            <YAxis />
+            <YAxis width={140} tickFormatter={(value) => fmtMoney(value)} />
             <Tooltip formatter={(v, n) => [fmtMoney(v), n]} />
             <Legend />
-            {topKeys.map((k, i) => {
+            {selectedObjects.map((k, i) => {
               const fills = [COLORS.teacher, COLORS.nonTeacher, COLORS.capital, COLORS.other, COLORS.recapture];
               return <Bar key={k} dataKey={k} name={k} fill={fills[i % fills.length]} />;
             })}
           </BarChart>
         </ResponsiveContainer>
-        {!loading && costCenterSeries.length === 0 && (
-          <div className="text-sm text-gray-500 mt-2">No data available for current selection</div>
+        {!loading && (selectedObjects.length === 0 || costCenterSeries.length === 0) && (
+          <div className="text-sm text-gray-500 mt-2">
+            {selectedObjects.length === 0
+              ? "Select at least one cost center to display spending trends"
+              : "No data available for current selection"}
+          </div>
         )}
       </section>
     </main>
