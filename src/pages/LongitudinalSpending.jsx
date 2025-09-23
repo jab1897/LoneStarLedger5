@@ -15,7 +15,19 @@ const COLORS = {
 };
 
 const fmtMoney = (n) =>
-  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n || 0);
+  new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(n || 0);
+
+const toNumber = (value) => {
+  if (value == null || value === "") return 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  const cleaned = String(value).replace(/[^0-9.-]+/g, "");
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
 export default function LongitudinalSpending() {
   const [totals, setTotals] = useState([]);
@@ -57,8 +69,10 @@ export default function LongitudinalSpending() {
   // overall spending line data
   const overallSeries = useMemo(() => {
     return years.map(year => {
-      const rows = totals.filter(r => selected.includes(r.DISTRICT_N) && Number(r.Year) === year);
-      const total = rows.reduce((acc, r) => acc + Number(r.Total_Spending || 0), 0);
+      const rows = totals.filter(
+        r => selected.includes(r.DISTRICT_N) && Number(r.Year) === year
+      );
+      const total = rows.reduce((acc, r) => acc + toNumber(r.Total_Spending), 0);
       return { Year: year, Total: total };
     });
   }, [totals, years, selected]);
@@ -72,7 +86,7 @@ export default function LongitudinalSpending() {
       const y = Number(r.Year);
       const key = r.Object_Description_Long;
       const m = byYear.get(y) || {};
-      m[key] = (m[key] || 0) + Number(r.Object_Spending || 0);
+      m[key] = (m[key] || 0) + toNumber(r.Object_Spending);
       byYear.set(y, m);
     });
     const sortedYears = Array.from(byYear.keys()).sort((a, b) => a - b);
