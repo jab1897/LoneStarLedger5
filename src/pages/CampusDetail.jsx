@@ -136,7 +136,7 @@ export default function CampusDetail() {
             <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{name}</h1>
             {(campusGrade || Number.isFinite(campusScore)) && (
               <div className="mt-3 flex items-center gap-2">
-                <span className="font-bold">Campus Grade</span>
+                <span className="font-bold text-gray-900">Campus Grade</span>
                 <GradeScorePill grade={campusGrade} score={campusScore} />
               </div>
             )}
@@ -175,7 +175,7 @@ export default function CampusDetail() {
       </header>
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <h2 className="text-xl font-bold">Campus Location</h2>
+        <h2 className="text-xl font-bold text-gray-900">Campus Location</h2>
         {geom ? (
           <LeafMap geom={geom} height={420} />
         ) : (
@@ -186,11 +186,11 @@ export default function CampusDetail() {
       </section>
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <h2 className="text-xl font-bold">Campus Facts</h2>
+        <h2 className="text-xl font-bold text-gray-900">Campus Facts</h2>
         {loading && <div>Loading…</div>}
         {error && <div className="text-red-700">{error}</div>}
         {!loading && !error && row && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-900">
             {Object.entries(row)
               .filter(([k]) => !hiddenKeys.has(normKey(k)))
               .map(([k, v]) => {
@@ -206,9 +206,9 @@ export default function CampusDetail() {
                 }
 
                 return (
-                  <div key={k} className="bg-gray-50 border rounded-xl px-3 py-2">
-                    <div className="text-gray-600">{title}</div>
-                    <div className="font-medium break-words">{String(value)}</div>
+                  <div key={k} className="bg-gray-50 border rounded-xl px-3 py-2 text-gray-900">
+                    <div className="font-semibold">{title}</div>
+                    <div className="font-medium break-words text-gray-900">{String(value)}</div>
                   </div>
                 );
               })}
