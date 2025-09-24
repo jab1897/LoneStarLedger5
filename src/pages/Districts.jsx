@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { loadDistrictsCSV } from "../lib/data";
+import useSearchSuggestions from "../hooks/useSearchSuggestions";
 
 const fmtNum = (n) =>
   n === null || n === undefined || n === "" || Number.isNaN(+n)
@@ -38,6 +39,8 @@ export default function DistrictsPage() {
   const nav = useNavigate();
 
   const [query, setQuery] = useState(sp.get("q") || "");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const searchBlurTimeout = useRef(null);
   const [selected, setSelected] = useState(
     new Set((sp.get("county") || "").split(",").filter(Boolean))
   );
@@ -83,6 +86,26 @@ export default function DistrictsPage() {
     })();
     return () => { on = false; };
   }, []);
+
+  useEffect(() => () => {
+    if (searchBlurTimeout.current) clearTimeout(searchBlurTimeout.current);
+  }, []);
+
+  const { suggestions: districtSuggestions } = useSearchSuggestions(query, {
+    limit: 6,
+    types: ["district"],
+  });
+
+  const showSuggestions =
+    searchFocused && query.trim().length > 0 && districtSuggestions.length > 0;
+
+  const handleSuggestionSelect = (item) => {
+    setQuery(item.name);
+    setPage(1);
+    if (searchBlurTimeout.current) clearTimeout(searchBlurTimeout.current);
+    setSearchFocused(false);
+    nav(`/district/${encodeURIComponent(item.id)}`);
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -165,12 +188,22 @@ export default function DistrictsPage() {
       <div className="grid grid-cols-1 md:grid-cols-[280px,1fr] gap-6">
         {/* Filters */}
         <aside className="rounded-2xl border p-4 bg-white">
-          <div className="relative">
+          <div className="autocomplete relative">
             <input
               className="w-full border rounded-xl px-3 py-2"
               placeholder="Search by District name or ID (e.g., Austin or 227901)"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setPage(1); }}
+              onFocus={() => {
+                if (searchBlurTimeout.current) clearTimeout(searchBlurTimeout.current);
+                setSearchFocused(true);
+              }}
+              onBlur={() => {
+                searchBlurTimeout.current = window.setTimeout(
+                  () => setSearchFocused(false),
+                  120
+                );
+              }}
               onKeyDown={(e) => { if (e.key === "Enter") handleEnter(); }}
             />
             {isIdLike(query) && (
@@ -181,6 +214,25 @@ export default function DistrictsPage() {
               >
                 Open {query.trim()}
               </button>
+            )}
+            {showSuggestions && (
+              <div className="suggestion-panel suggestion-panel--overlay">
+                {districtSuggestions.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    className="suggestion-option"
+                    onMouseDown={(evt) => evt.preventDefault()}
+                    onClick={() => handleSuggestionSelect(item)}
+                  >
+                    <span className="suggestion-option__label">{item.name}</span>
+                    <span className="suggestion-option__meta">
+                      District • {item.id}
+                      {item.county ? ` • ${item.county}` : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 

@@ -40,11 +40,11 @@ export default function TexasMap() {
     })();
   }, [url]);
 
-  const baseStyle = useMemo(() => ({ weight: 1, color: "#1f3a8a", fillOpacity: 0.15 }), []);
+  const baseStyle = useMemo(() => ({ weight: 1, color: "#1F4E79", fillOpacity: 0.15 }), []);
 
   return (
-    <div className="h-[420px] w-full rounded-2xl overflow-hidden border bg-white">
-      <MapContainer center={[31, -99]} zoom={6} className="h-full w-full" scrollWheelZoom={false}>
+    <div className="card texas-map">
+      <MapContainer center={[31, -99]} zoom={6} className="texas-map__canvas" scrollWheelZoom={false}>
         <TileLayer
           attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

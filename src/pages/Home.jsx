@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react"; 
-import { Link } from "react-router-dom";
+import React, { useEffect, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import StatCard from "../ui/StatCard";
 import DataTable from "../ui/DataTable";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
 import { loadSuperintendents, loadIndebted, loadPerformance } from "../lib/homeData";
 import TexasMap from "../components/TexasMap";
+import useSearchSuggestions from "../hooks/useSearchSuggestions";
 
 const fmtInt = (n) =>
   typeof n === "number" && !Number.isNaN(n)
@@ -34,6 +35,11 @@ export default function Home() {
   const [indebted, setIndebted] = useState([]);
   const [performance, setPerformance] = useState([]);
   const [superintendents, setSuperintendents] = useState([]);
+  const [heroSearch, setHeroSearch] = useState("");
+  const [heroFocused, setHeroFocused] = useState(false);
+  const heroBlurTimeout = useRef(null);
+  const navigate = useNavigate();
+  const { suggestions: heroSuggestions } = useSearchSuggestions(heroSearch, { limit: 6 });
 
   useEffect(() => {
     (async () => {
@@ -55,6 +61,12 @@ export default function Home() {
     loadIndebted().then(setIndebted).catch(() => setIndebted([]));
     loadPerformance().then(setPerformance).catch(() => setPerformance([]));
     loadSuperintendents().then(setSuperintendents).catch(() => setSuperintendents([]));
+  }, []);
+
+  useEffect(() => () => {
+    if (heroBlurTimeout.current) {
+      clearTimeout(heroBlurTimeout.current);
+    }
   }, []);
 
   const debtCols = [
@@ -149,23 +161,97 @@ export default function Home() {
     enrollment: r.enroll,
   }));
 
-  return (
-    <div className="space-y-10">
-      <section className="bg-white rounded-2xl border p-6 md:p-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-          Education money should be easy to follow
-        </h1>
-        <p className="mt-2 text-gray-600">
-          Explore Texas districts, campuses, and spending records in one place.
-        </p>
+  const onHeroSearch = (e) => {
+    e.preventDefault();
+    const next = heroSearch.trim();
+    if (next.length === 0) {
+      navigate("/search");
+      return;
+    }
+    navigate(`/search?q=${encodeURIComponent(next)}`);
+  };
 
-        {/* Your 8 KPIs */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              label="Total Spending"
-              value={fmtMoney(stats?.totalSpendingSum)}
-              to="/why-no-amount-of-money-is-enough"
-            />
+  const handleHeroSelect = (item) => {
+    setHeroSearch(item.name);
+    if (heroBlurTimeout.current) clearTimeout(heroBlurTimeout.current);
+    setHeroFocused(false);
+    if (item.type === "district") {
+      navigate(`/district/${encodeURIComponent(item.id)}`);
+    } else if (item.type === "campus") {
+      navigate(`/campus/${encodeURIComponent(item.id)}`);
+    } else {
+      navigate(`/search?q=${encodeURIComponent(item.name)}`);
+    }
+  };
+
+  const heroHasSuggestions =
+    heroFocused && heroSearch.trim().length > 0 && heroSuggestions.length > 0;
+
+  return (
+    <div className="space-y-12">
+      <section className="hero">
+        <div className="hero-inner">
+          <h1>Follow the money in Texas schools</h1>
+          <p className="lead">Search any district or campus and see spending beside student results.</p>
+          <form className="hero-actions" role="search" onSubmit={onHeroSearch}>
+            <div className="autocomplete">
+              <input
+                className="input"
+                type="search"
+                placeholder="Search a district or campus"
+                aria-label="Search a district or campus"
+                value={heroSearch}
+                onChange={(e) => setHeroSearch(e.target.value)}
+                onFocus={() => {
+                  if (heroBlurTimeout.current) clearTimeout(heroBlurTimeout.current);
+                  setHeroFocused(true);
+                }}
+                onBlur={() => {
+                  heroBlurTimeout.current = window.setTimeout(() => setHeroFocused(false), 120);
+                }}
+              />
+              {heroHasSuggestions && (
+                <div className="suggestion-panel suggestion-panel--overlay">
+                  {heroSuggestions.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className="suggestion-option"
+                      onMouseDown={(evt) => evt.preventDefault()}
+                      onClick={() => handleHeroSelect(item)}
+                    >
+                      <span className="suggestion-option__label">{item.name}</span>
+                      <span className="suggestion-option__meta">
+                        {item.type === "district"
+                          ? `District • ${item.id}${item.county ? ` • ${item.county}` : ""}`
+                          : `Campus • ${item.id}${item.district ? ` • ${item.district}` : ""}`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button className="btn btn-primary" type="submit">
+              Search my district
+            </button>
+            <button
+              className="btn btn-text"
+              type="button"
+              onClick={() => navigate("/about")}
+            >
+              How we source the data
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Total Spending"
+            value="$99,988,017,629.00"
+            to="/why-no-amount-of-money-is-enough"
+          />
           <StatCard
             label="Enrollment (Excluding Charter Schools)"
             value={fmtInt(stats?.enrollmentTotal)}
@@ -189,24 +275,24 @@ export default function Home() {
 
       {/* Home tables */}
       <section className="space-y-8">
-        <div>
-          <h2 className="text-xl font-bold mb-2">Most Indebted Districts</h2>
+        <div className="section-card">
+          <h2 className="section-heading">Most Indebted Districts</h2>
           <DataTable
             columns={debtCols}
             rows={debtRows}
             initialSort={{ key: "debt", dir: "desc" }}
           />
         </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Worst Performing Districts</h2>
+        <div className="section-card">
+          <h2 className="section-heading">Worst Performing Districts</h2>
           <DataTable
             columns={perfCols}
             rows={perfRows}
             initialSort={{ key: "score", dir: "asc" }}
           />
         </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Superintendent Salaries</h2>
+        <div className="section-card">
+          <h2 className="section-heading">Superintendent Salaries</h2>
           <DataTable
             columns={supCols}
             rows={supRows}

@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import StatPill from "../ui/StatPill";
 import GradeScorePill from "../ui/GradeScorePill";
 import { fetchJSON, findFeatureByProp } from "../lib/staticData";
@@ -89,6 +89,7 @@ const toPct = (v, digits = 0) => {
 
 export default function DistrictDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [row, setRow] = React.useState(null);
   const [hdr, setHdr] = React.useState(new globalThis.Map());
   const [geom, setGeom] = React.useState(null);
@@ -97,6 +98,8 @@ export default function DistrictDetail() {
   // campuses
   const [campuses, setCampuses] = React.useState([]);
   const [campSearch, setCampSearch] = React.useState("");
+  const [campFocused, setCampFocused] = React.useState(false);
+  const campBlurTimeout = React.useRef(null);
 
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
@@ -146,6 +149,10 @@ export default function DistrictDetail() {
       alive = false;
     };
   }, [id]);
+
+  React.useEffect(() => () => {
+    if (campBlurTimeout.current) clearTimeout(campBlurTimeout.current);
+  }, []);
 
   // Title prefers CSV NAME, else GeoJSON
   const displayName =
@@ -325,6 +332,22 @@ export default function DistrictDetail() {
     [sortedCampuses, campSearch]
   );
 
+  const campusSuggestions = React.useMemo(
+    () => (campSearch.trim() ? sortedCampuses.slice(0, 6) : []),
+    [sortedCampuses, campSearch]
+  );
+
+  const showCampusSuggestions = campFocused && campusSuggestions.length > 0;
+
+  const handleCampusSelect = (item) => {
+    setCampSearch(item.campusName);
+    if (campBlurTimeout.current) clearTimeout(campBlurTimeout.current);
+    setCampFocused(false);
+    if (item.campusId) {
+      navigate(`/campus/${encodeURIComponent(item.campusId)}`);
+    }
+  };
+
   const campusCols = [
     {
       key: "campusName",
@@ -463,12 +486,39 @@ export default function DistrictDetail() {
           </div>
         </div>
 
-        <input
-          className="border rounded-xl px-3 py-2 w-full md:w-96"
-          placeholder="Don't See Your School? Search for It Here"
-          value={campSearch}
-          onChange={(e) => setCampSearch(e.target.value)}
-        />
+        <div className="autocomplete w-full md:w-96">
+          <input
+            className="border rounded-xl px-3 py-2 w-full"
+            placeholder="Don't See Your School? Search for It Here"
+            value={campSearch}
+            onChange={(e) => setCampSearch(e.target.value)}
+            onFocus={() => {
+              if (campBlurTimeout.current) clearTimeout(campBlurTimeout.current);
+              setCampFocused(true);
+            }}
+            onBlur={() => {
+              campBlurTimeout.current = window.setTimeout(() => setCampFocused(false), 120);
+            }}
+          />
+          {showCampusSuggestions && (
+            <div className="suggestion-panel suggestion-panel--overlay">
+              {campusSuggestions.map((item) => (
+                <button
+                  key={`campus-${item.campusId}`}
+                  type="button"
+                  className="suggestion-option"
+                  onMouseDown={(evt) => evt.preventDefault()}
+                  onClick={() => handleCampusSelect(item)}
+                >
+                  <span className="suggestion-option__label">{item.campusName}</span>
+                  <span className="suggestion-option__meta">
+                    Campus • {item.campusId || "—"}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <DataTable
           columns={campusCols}
