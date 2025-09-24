@@ -5,8 +5,7 @@
   function getPreferred() {
     const saved = localStorage.getItem(key);
     if (saved) return saved;
-    const mql = window.matchMedia("(prefers-color-scheme: dark)");
-    return mql.matches ? "dark" : "light";
+    return "dark";
   }
   window.OTSTheme = {
     set: function (t) { localStorage.setItem(key, t); apply(t); },
