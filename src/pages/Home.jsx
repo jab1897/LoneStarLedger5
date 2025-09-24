@@ -163,7 +163,7 @@ export default function Home() {
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
               label="Total Spending"
-              value={fmtMoney(stats?.totalSpendingSum)}
+              value="$99,988,017,629.00"
               to="/why-no-amount-of-money-is-enough"
             />
           <StatCard
