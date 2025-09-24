@@ -133,7 +133,7 @@ export default function CampusDetail() {
       <header className="bg-white border rounded-2xl p-6">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">{name}</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{name}</h1>
             {(campusGrade || Number.isFinite(campusScore)) && (
               <div className="mt-3 flex items-center gap-2">
                 <span className="font-bold">Campus Grade</span>

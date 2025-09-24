@@ -416,7 +416,7 @@ export default function DistrictDetail() {
       <header className="bg-white border rounded-2xl p-6">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{displayName}</h1>
             <p className="text-gray-600 mt-1">{county}</p>
             {(districtGrade || Number.isFinite(districtScore)) && (
               <div className="mt-3 flex items-center gap-2">
@@ -426,7 +426,7 @@ export default function DistrictDetail() {
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 min-w-0">
             <StatPill label="Enrollment" value={Number.isNaN(enrollment) ? "—" : num.format(enrollment)} />
             <StatPill label="Per-Pupil Spending" value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
             <StatPill label="Total District Spending" value={Number.isNaN(totalSpending) ? "—" : usd.format(totalSpending)} />
