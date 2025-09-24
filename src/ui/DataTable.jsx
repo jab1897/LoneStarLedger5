@@ -37,20 +37,17 @@ export default function DataTable({ columns, rows, initialSort }) {
   };
 
   return (
-    <div className="overflow-hidden border rounded-2xl">
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50 border-b">
+    <div className="data-table">
+      <div className="data-table__scroller">
+        <table>
+          <thead>
             <tr>
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={`text-left font-semibold px-4 py-3 ${c.align === "right" ? "text-right" : ""}`}
+                  className={c.align === "right" ? "align-right" : undefined}
                 >
-                  <button
-                    onClick={() => toggle(c.key)}
-                    className="inline-flex items-center gap-1 hover:underline"
-                  >
+                  <button onClick={() => toggle(c.key)}>
                     {c.label}
                     {sort.key === c.key && (
                       <span aria-hidden>{sort.dir === "asc" ? "▲" : "▼"}</span>
@@ -62,11 +59,11 @@ export default function DataTable({ columns, rows, initialSort }) {
           </thead>
           <tbody>
             {sorted.map((row, idx) => (
-              <tr key={idx} className="odd:bg-white even:bg-gray-50">
+              <tr key={idx}>
                 {columns.map((c) => (
                   <td
                     key={c.key}
-                    className={`px-4 py-3 ${c.align === "right" ? "text-right" : ""}`}
+                    className={c.align === "right" ? "align-right" : undefined}
                   >
                     {c.format ? c.format(row[c.key], row) : row[c.key]}
                   </td>

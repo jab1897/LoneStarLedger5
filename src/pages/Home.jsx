@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react"; 
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import StatCard from "../ui/StatCard";
 import DataTable from "../ui/DataTable";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
@@ -34,6 +34,8 @@ export default function Home() {
   const [indebted, setIndebted] = useState([]);
   const [performance, setPerformance] = useState([]);
   const [superintendents, setSuperintendents] = useState([]);
+  const [heroSearch, setHeroSearch] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     (async () => {
@@ -149,23 +151,52 @@ export default function Home() {
     enrollment: r.enroll,
   }));
 
-  return (
-    <div className="space-y-10">
-      <section className="bg-white rounded-2xl border p-6 md:p-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-          Education money should be easy to follow
-        </h1>
-        <p className="mt-2 text-gray-600">
-          Explore Texas districts, campuses, and spending records in one place.
-        </p>
+  const onHeroSearch = (e) => {
+    e.preventDefault();
+    const next = heroSearch.trim();
+    if (next.length === 0) {
+      navigate("/search");
+      return;
+    }
+    navigate(`/search?q=${encodeURIComponent(next)}`);
+  };
 
-        {/* Your 8 KPIs */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              label="Total Spending"
-              value="$99,988,017,629.00"
-              to="/why-no-amount-of-money-is-enough"
+  return (
+    <div className="space-y-12">
+      <section className="hero">
+        <div className="hero-inner">
+          <h1>Follow the money in Texas schools</h1>
+          <p className="lead">Search any district or campus and see spending beside student results.</p>
+          <form className="hero-actions" role="search" onSubmit={onHeroSearch}>
+            <input
+              className="input"
+              type="search"
+              placeholder="Search a district or campus"
+              aria-label="Search a district or campus"
+              value={heroSearch}
+              onChange={(e) => setHeroSearch(e.target.value)}
             />
+            <button className="btn btn-primary" type="submit">
+              Search my district
+            </button>
+            <button
+              className="btn btn-text"
+              type="button"
+              onClick={() => navigate("/about")}
+            >
+              How we source the data
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section className="space-y-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            label="Total Spending"
+            value="$99,988,017,629.00"
+            to="/why-no-amount-of-money-is-enough"
+          />
           <StatCard
             label="Enrollment (Excluding Charter Schools)"
             value={fmtInt(stats?.enrollmentTotal)}
@@ -189,24 +220,24 @@ export default function Home() {
 
       {/* Home tables */}
       <section className="space-y-8">
-        <div>
-          <h2 className="text-xl font-bold mb-2">Most Indebted Districts</h2>
+        <div className="section-card">
+          <h2 className="section-heading">Most Indebted Districts</h2>
           <DataTable
             columns={debtCols}
             rows={debtRows}
             initialSort={{ key: "debt", dir: "desc" }}
           />
         </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Worst Performing Districts</h2>
+        <div className="section-card">
+          <h2 className="section-heading">Worst Performing Districts</h2>
           <DataTable
             columns={perfCols}
             rows={perfRows}
             initialSort={{ key: "score", dir: "asc" }}
           />
         </div>
-        <div>
-          <h2 className="text-xl font-bold mb-2">Superintendent Salaries</h2>
+        <div className="section-card">
+          <h2 className="section-heading">Superintendent Salaries</h2>
           <DataTable
             columns={supCols}
             rows={supRows}

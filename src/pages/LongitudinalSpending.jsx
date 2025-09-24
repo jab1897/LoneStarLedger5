@@ -111,24 +111,50 @@ async function loadCsv(url) {
   return rows;
 }
 
-const COLORS = {
-  total: "#0B3D91",
-  consultant: "#1F66D1",
-  teacher: "#FFC72C",
-  professional: "#4D8FEA",
-  legal: "#FF8C00",
-  lobbying: "#B8552F",
-  other: "#7FB1F2",
+const FALLBACK_CHART_COLORS = {
+  total: "#0072B2",
+  teacher: "#56B4E9",
+  palette: ["#0072B2", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#D55E00", "#CC79A7", "#999999"],
+  positive: "#10B981",
+  negative: "#DC2626",
+  grid: "rgba(15, 23, 42, 0.15)",
 };
 
-const BAR_COLORS = [
-  COLORS.consultant,
-  COLORS.professional,
-  COLORS.teacher,
-  COLORS.legal,
-  COLORS.lobbying,
-  COLORS.other,
-];
+function readCssVar(name, fallback) {
+  if (typeof window === "undefined") return fallback;
+  const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+  return value ? value.trim() || fallback : fallback;
+}
+
+function getChartColors() {
+  const palette = Array.from({ length: 8 }, (_, i) =>
+    readCssVar(`--viz-${i + 1}`, FALLBACK_CHART_COLORS.palette[i])
+  );
+  return {
+    total: palette[0] || FALLBACK_CHART_COLORS.total,
+    teacher: palette[2] || FALLBACK_CHART_COLORS.teacher,
+    palette,
+    positive: readCssVar("--success-500", FALLBACK_CHART_COLORS.positive),
+    negative: readCssVar("--danger-500", FALLBACK_CHART_COLORS.negative),
+    grid: readCssVar("--grid-color", FALLBACK_CHART_COLORS.grid),
+  };
+}
+
+function useChartColors() {
+  const [colors, setColors] = React.useState(getChartColors);
+  React.useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const root = document.documentElement;
+    const observer = new MutationObserver((mutations) => {
+      if (mutations.some((m) => m.attributeName === "data-theme")) {
+        setColors(getChartColors());
+      }
+    });
+    observer.observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+  return colors;
+}
 
 const TEACHER_PAY_LABEL = "Teacher Pay";
 
@@ -216,6 +242,7 @@ export default function LongitudinalSpending() {
   const LINE_STROKE = isMobile ? 3.5 : 3.75;
   const DOT_R = isMobile ? 3.5 : 4.5;
   const ACTIVE_DOT_R = isMobile ? 6.5 : 7.5;
+  const chartColors = useChartColors();
 
   useEffect(() => {
     let cancelled = false;
@@ -381,50 +408,57 @@ export default function LongitudinalSpending() {
   };
 
   return (
-    <main className="px-4 md:px-8 space-y-8">
-      <h1 className="text-3xl font-extrabold">Spending over time</h1>
+    <main className="space-y-8">
+      <section className="section-card space-y-4">
+        <h1 className="section-heading">Spending over time</h1>
 
-      {/* search and selected chips */}
-      <div className="space-y-3">
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search district by name or ID"
-          className="w-full max-w-xl border rounded px-3 py-2"
-        />
-        {query && (
-          <div className="border rounded p-2 max-w-xl bg-white">
-            {filteredOptions.map(o => (
-              <div key={o.id} className="cursor-pointer py-1 px-2 hover:bg-gray-100" onClick={() => addDistrict(o.id)}>
-                {o.name} ({o.id})
-              </div>
-            ))}
+        <div className="space-y-3">
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search district by name or ID"
+            className="input"
+            aria-label="Search for a district by name or ID"
+          />
+          {query && filteredOptions.length > 0 && (
+            <div className="suggestion-panel">
+              {filteredOptions.map(o => (
+                <button
+                  key={o.id}
+                  type="button"
+                  className="suggestion-option"
+                  onClick={() => addDistrict(o.id)}
+                >
+                  {o.name} ({o.id})
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {selected.map(id => {
+              const name = districts.find(d => d.id === id)?.name || id;
+              return (
+                <button key={id} onClick={() => removeDistrict(id)} type="button" className="pill">
+                  {name}
+                </button>
+              );
+            })}
           </div>
-        )}
-        <div className="flex flex-wrap gap-2">
-          {selected.map(id => {
-            const name = districts.find(d => d.id === id)?.name || id;
-            return (
-              <button key={id} onClick={() => removeDistrict(id)} className="px-2 py-1 rounded bg-blue-100">
-                {name}
-              </button>
-            );
-          })}
         </div>
-      </div>
 
-      {loading && <div className="text-sm text-gray-500">Loading spending data</div>}
-      {error && <div className="text-sm text-red-600">{error}</div>}
+        {loading && <div className="notice">Loading spending data</div>}
+        {error && <div className="notice error">{error}</div>}
+      </section>
 
       {/* Overall spending */}
-      <section>
-        <h2 className="text-xl font-bold mb-2">Overall spending</h2>
+      <section className="section-card">
+        <h2 className="section-heading">Overall spending</h2>
         <ResponsiveContainer width="100%" height={CHART_H_LINE}>
           <LineChart
             data={overallSeries}
             margin={{ top: 8, right: isMobile ? 8 : 16, bottom: 12, left: 8 }}
           >
-            <CartesianGrid strokeOpacity={0.25} strokeDasharray="3 3" />
+            <CartesianGrid stroke={chartColors.grid} strokeDasharray="3 3" />
             <XAxis
               dataKey="Year"
               tick={AXIS_FONT}
@@ -442,7 +476,13 @@ export default function LongitudinalSpending() {
             <Tooltip
               formatter={(v) => fmtShortUSD(v)}
               labelFormatter={(y) => `Year ${y}`}
-              contentStyle={{ fontSize: isMobile ? 12 : 13 }}
+              contentStyle={{
+                fontSize: isMobile ? 12 : 13,
+                backgroundColor: "var(--surface-0)",
+                color: "var(--text-0)",
+                borderRadius: "var(--radius-md)",
+                borderColor: "var(--border)",
+              }}
             />
             <Legend
               verticalAlign="top"
@@ -454,36 +494,43 @@ export default function LongitudinalSpending() {
               type="monotone"
               dataKey="Total"
               name="Total"
-              stroke={COLORS.total}
+              stroke={chartColors.total}
               strokeWidth={LINE_STROKE}
               strokeLinecap="round"
-              dot={{ r: DOT_R }}
-              activeDot={{ r: ACTIVE_DOT_R, strokeWidth: 2 }}
+              dot={{ r: DOT_R, stroke: chartColors.total, fill: chartColors.total }}
+              activeDot={{ r: ACTIVE_DOT_R, strokeWidth: 2, stroke: chartColors.total, fill: chartColors.total }}
               connectNulls
             />
             <Line
               type="monotone"
               dataKey={TEACHER_PAY_LABEL}
               name={TEACHER_PAY_LABEL}
-              stroke={COLORS.teacher}
+              stroke={chartColors.teacher}
               strokeWidth={LINE_STROKE}
               strokeLinecap="round"
-              dot={{ r: DOT_R }}
-              activeDot={{ r: ACTIVE_DOT_R, strokeWidth: 2 }}
+              dot={{ r: DOT_R, stroke: chartColors.teacher, fill: chartColors.teacher }}
+              activeDot={{
+                r: ACTIVE_DOT_R,
+                strokeWidth: 2,
+                stroke: chartColors.teacher,
+                fill: chartColors.teacher,
+              }}
               connectNulls
             />
           </LineChart>
         </ResponsiveContainer>
         {!loading && overallSeries.length === 0 && (
-          <div className="text-sm text-gray-500 mt-2">No data available for current selection</div>
+          <div className="notice" style={{ marginTop: "0.75rem" }}>
+            No data available for current selection
+          </div>
         )}
       </section>
 
       {/* Cost centers by object */}
-      <section>
-        <h2 className="text-xl font-bold mb-2">Cost centers by object</h2>
+      <section className="section-card">
+        <h2 className="section-heading">Cost centers by object</h2>
         <div className="space-y-2 mb-4">
-          <label htmlFor="object-filter" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="object-filter" className="block text-sm font-semibold text-[var(--text-muted)]">
             Add or remove cost centers
           </label>
           <select
@@ -491,7 +538,7 @@ export default function LongitudinalSpending() {
             value={objectSelectValue}
             onChange={handleObjectSelect}
             disabled={!objectOptions.length}
-            className="w-full max-w-sm border rounded px-3 py-2 bg-white"
+            className="select"
           >
             <option value="" disabled>
               {objectOptions.length ? "Select cost center" : "Loading cost centers"}
@@ -508,7 +555,7 @@ export default function LongitudinalSpending() {
                 key={name}
                 type="button"
                 onClick={() => removeObject(name)}
-                className="px-2 py-1 rounded bg-blue-100"
+                className="pill"
               >
                 {name}
               </button>
@@ -523,7 +570,7 @@ export default function LongitudinalSpending() {
             barGap={isMobile ? 2 : 4}
             maxBarSize={isMobile ? 28 : 36}
           >
-            <CartesianGrid strokeOpacity={0.25} strokeDasharray="3 3" />
+            <CartesianGrid stroke={chartColors.grid} strokeDasharray="3 3" />
             <XAxis
               dataKey="Year"
               tick={AXIS_FONT}
@@ -541,7 +588,13 @@ export default function LongitudinalSpending() {
             <Tooltip
               formatter={(v, n) => [fmtShortUSD(v), n]}
               labelFormatter={(y) => `Year ${y}`}
-              contentStyle={{ fontSize: isMobile ? 12 : 13 }}
+              contentStyle={{
+                fontSize: isMobile ? 12 : 13,
+                backgroundColor: "var(--surface-0)",
+                color: "var(--text-0)",
+                borderRadius: "var(--radius-md)",
+                borderColor: "var(--border)",
+              }}
             />
             <Legend
               verticalAlign="top"
@@ -550,13 +603,13 @@ export default function LongitudinalSpending() {
               wrapperStyle={{ paddingBottom: 6, fontSize: isMobile ? 12 : 13 }}
             />
             {selectedObjects.map((k, i) => {
-              const fills = BAR_COLORS;
+              const fills = chartColors.palette;
               return <Bar key={k} dataKey={k} name={k} fill={fills[i % fills.length]} />;
             })}
           </BarChart>
         </ResponsiveContainer>
         {!loading && (selectedObjects.length === 0 || costCenterSeries.length === 0) && (
-          <div className="text-sm text-gray-500 mt-2">
+          <div className="notice" style={{ marginTop: "0.75rem" }}>
             {selectedObjects.length === 0
               ? "Select at least one cost center to display spending trends"
               : "No data available for current selection"}
