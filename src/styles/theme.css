@@ -164,10 +164,25 @@ a:hover { text-decoration: underline; }
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
 }
 .kpi .trend.up { color: var(--success-500); }
 .kpi .trend.down { color: var(--danger-500); }
 .kpi .trend.flat { color: var(--text-muted); }
+
+/* Stat pill and KPI safety */
+.stat-pill { min-width: 0; max-width: 100%; }
+.stat-pill p { margin: 0; }
+.stat-pill__value {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.1;
+}
 
 .hero {
   padding: clamp(3rem, 6vw, 6rem) 1rem;

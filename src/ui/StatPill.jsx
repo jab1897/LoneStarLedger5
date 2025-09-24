@@ -12,9 +12,11 @@ export default function StatPill({ label, value, color = "gray", boldLabel = fal
   const labelCls = boldLabel ? "text-gray-900 font-semibold" : "text-gray-900";
 
   return (
-    <div className={`rounded-xl border px-3 py-2 text-sm text-gray-900 ${cls}`}>
+    <div className={`stat-pill rounded-xl border px-3 py-2 text-sm text-gray-900 ${cls}`}>
       <p className={labelCls}>{label}</p>
-      <p className="font-bold text-gray-900">{value}</p>
+      <p className="stat-pill__value font-bold text-gray-900 tabular-nums leading-tight whitespace-normal break-words max-w-full">
+        {value}
+      </p>
     </div>
   );
 }

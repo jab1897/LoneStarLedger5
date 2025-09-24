@@ -416,17 +416,17 @@ export default function DistrictDetail() {
       <header className="bg-white border rounded-2xl p-6">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">{displayName}</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{displayName}</h1>
             <p className="text-gray-600 mt-1">{county}</p>
             {(districtGrade || Number.isFinite(districtScore)) && (
               <div className="mt-3 flex items-center gap-2">
-                <span className="font-bold">TEA's District Grade</span>
+                <span className="font-bold text-gray-900">TEA's District Grade</span>
                 <GradeScorePill grade={districtGrade} score={districtScore} />
               </div>
             )}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 min-w-0">
             <StatPill label="Enrollment" value={Number.isNaN(enrollment) ? "—" : num.format(enrollment)} />
             <StatPill label="Per-Pupil Spending" value={Number.isNaN(perStudent) ? "—" : usd.format(perStudent)} />
             <StatPill label="Total District Spending" value={Number.isNaN(totalSpending) ? "—" : usd.format(totalSpending)} />
@@ -471,14 +471,14 @@ export default function DistrictDetail() {
       />
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
-        <h2 className="text-xl font-bold">District Boundary</h2>
+        <h2 className="text-xl font-bold text-gray-900">District Boundary</h2>
         {geom ? <LeafMap geom={geom} height={420} /> : <p className="text-gray-600">No geometry found.</p>}
       </section>
 
       {/* Campuses */}
       <section className="bg-white border rounded-2xl p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold">Campuses</h2>
+          <h2 className="text-xl font-bold text-gray-900">Campuses</h2>
           <div className="text-sm text-gray-500">
             {filteredCampuses.length
               ? `${filteredCampuses.length} campus${filteredCampuses.length === 1 ? "" : "es"}`
