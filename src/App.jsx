@@ -8,6 +8,7 @@ import DistrictDetail from "./pages/DistrictDetail";
 import Campuses from "./pages/Campuses";
 import CampusDetail from "./pages/CampusDetail";
 import Search from "./pages/Search";
+import LongitudinalSpending from "./pages/LongitudinalSpending";
 import NotFound from "./pages/NotFound";
 import About from "./pages/About";
 import Solutions from "./pages/Solutions";
@@ -29,6 +30,7 @@ export default function App() {
               <Route path="/campuses" element={<Campuses />} />
               <Route path="/campus/:id" element={<CampusDetail />} />
               <Route path="/search" element={<Search />} />
+              <Route path="/spending" element={<LongitudinalSpending />} />
               <Route
                 path="/why-no-amount-of-money-is-enough"
                 element={<WhyNoAmount />}

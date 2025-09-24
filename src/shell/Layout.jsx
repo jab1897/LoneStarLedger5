@@ -1,6 +1,15 @@
 import React from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 
+const NAV_LINKS = [
+  { to: "/districts", label: "Districts" },
+  { to: "/campuses", label: "Campuses" },
+  { to: "/spending", label: "Trends in Spending" },
+  { to: "/why-no-amount-of-money-is-enough", label: "Why No Amount of Money is Enough" },
+  { to: "/solutions", label: "Solutions" },
+  { to: "/about", label: "About" },
+];
+
 export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
@@ -14,37 +23,74 @@ export default function Layout({ children }) {
 }
 
 function TopBar() {
+  const [menuOpen, setMenuOpen] = React.useState(false);
+
+  const toggleMenu = () => {
+    setMenuOpen((open) => !open);
+  };
+
+  const closeMenu = () => setMenuOpen(false);
+
   return (
     <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center gap-4">
         <Link to="/" className="font-black tracking-tight text-xl">
           LoneStar Ledger
         </Link>
+        <button
+          type="button"
+          onClick={toggleMenu}
+          className="md:hidden inline-flex items-center justify-center rounded-lg p-2 text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          aria-label="Toggle navigation menu"
+          aria-expanded={menuOpen}
+        >
+          {menuOpen ? (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 6l12 12M18 6l-12 12" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          )}
+        </button>
         <nav className="hidden md:flex items-center gap-6 text-sm">
-          <NavLink to="/districts" className={({isActive})=>`hover:text-blue-700 ${isActive?'text-blue-700':'text-gray-600'}`}>Districts</NavLink>
-          <NavLink to="/campuses" className={({isActive})=>`hover:text-blue-700 ${isActive?'text-blue-700':'text-gray-600'}`}>Campuses</NavLink>
+          {NAV_LINKS.map(({ to, label }) => (
             <NavLink
-              to="/why-no-amount-of-money-is-enough"
+              key={to}
+              to={to}
               className={({ isActive }) =>
-                `hover:text-blue-700 ${isActive ? 'text-blue-700' : 'text-gray-600'}`
+                `hover:text-blue-700 ${isActive ? "text-blue-700" : "text-gray-600"}`
               }
             >
-              Why No Amount of Money is Enough
+              {label}
             </NavLink>
-            <NavLink
-              to="/solutions"
-              className={({ isActive }) =>
-                `hover:text-blue-700 ${isActive ? 'text-blue-700' : 'text-gray-600'}`
-              }
-            >
-              Solutions
-            </NavLink>
-          <NavLink to="/about" className={({isActive})=>`hover:text-blue-700 ${isActive?'text-blue-700':'text-gray-600'}`}>About</NavLink>
+          ))}
         </nav>
-        <div className="ml-auto w-full md:w-96">
+        <div className="ml-auto flex-1 min-w-0 md:flex-none md:w-96">
           <GlobalSearch />
         </div>
       </div>
+      {menuOpen && (
+        <div className="md:hidden border-t border-gray-200 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col gap-1.5">
+            {NAV_LINKS.map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                onClick={closeMenu}
+                className={({ isActive }) =>
+                  `block rounded-lg px-2 py-2 text-base font-medium hover:bg-gray-50 ${
+                    isActive ? "text-blue-700" : "text-gray-700"
+                  }`
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+          </div>
+        </div>
+      )}
     </header>
   );
 }
