@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import useSearchSuggestions from "../hooks/useSearchSuggestions";
 
 const NAV_LINKS = [
   { to: "/districts", label: "Districts" },
@@ -125,6 +126,9 @@ function GlobalSearch() {
   const [q, setQ] = React.useState("");
   const location = useLocation();
   const nav = useNavigate();
+  const [focused, setFocused] = React.useState(false);
+  const blurTimeout = React.useRef(null);
+  const { suggestions } = useSearchSuggestions(q, { limit: 8 });
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -137,15 +141,63 @@ function GlobalSearch() {
     if (existing) setQ(existing);
   }, [location.search]);
 
+  React.useEffect(() => () => {
+    if (blurTimeout.current) clearTimeout(blurTimeout.current);
+  }, []);
+
+  const handleSelect = (item) => {
+    setQ(item.name);
+    if (blurTimeout.current) clearTimeout(blurTimeout.current);
+    setFocused(false);
+    if (item.type === "district") {
+      nav(`/district/${encodeURIComponent(item.id)}`);
+    } else if (item.type === "campus") {
+      nav(`/campus/${encodeURIComponent(item.id)}`);
+    } else {
+      nav(`/search?q=${encodeURIComponent(item.name)}`);
+    }
+  };
+
+  const showSuggestions = focused && q.trim().length > 0 && suggestions.length > 0;
+
   return (
     <form onSubmit={onSubmit}>
-      <input
-        className="input"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Search district, campus, or vendor"
-        aria-label="Search the site"
-      />
+      <div className="autocomplete">
+        <input
+          className="input"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search district, campus, or vendor"
+          aria-label="Search the site"
+          onFocus={() => {
+            if (blurTimeout.current) clearTimeout(blurTimeout.current);
+            setFocused(true);
+          }}
+          onBlur={() => {
+            blurTimeout.current = window.setTimeout(() => setFocused(false), 120);
+          }}
+        />
+        {showSuggestions && (
+          <div className="suggestion-panel suggestion-panel--overlay">
+            {suggestions.map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                className="suggestion-option"
+                onMouseDown={(evt) => evt.preventDefault()}
+                onClick={() => handleSelect(item)}
+              >
+                <span className="suggestion-option__label">{item.name}</span>
+                <span className="suggestion-option__meta">
+                  {item.type === "district"
+                    ? `District • ${item.id}${item.county ? ` • ${item.county}` : ""}`
+                    : `Campus • ${item.id}${item.district ? ` • ${item.district}` : ""}`}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       <button type="submit" aria-label="Run search">
         <svg
           xmlns="http://www.w3.org/2000/svg"

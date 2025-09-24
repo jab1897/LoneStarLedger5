@@ -1,6 +1,6 @@
 // src/pages/District.jsx  (REPLACE with this whole file if easier)
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { loadDistrictsCSV } from "../lib/data";
 import { getSpendingForDistrict } from "../lib/spending";
 import { getCampusesForDistrict } from "../lib/campuses";
@@ -25,6 +25,7 @@ const NUM = (v) =>
 
 export default function District() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [row, setRow] = useState(null);
   const [fields, setFields] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -50,6 +51,8 @@ export default function District() {
   const [campRows, setCampRows] = useState([]);       // raw CSV rows for this district
   const [campFields, setCampFields] = useState(null);
   const [campSearch, setCampSearch] = useState("");
+  const [campFocused, setCampFocused] = useState(false);
+  const campBlurTimeout = useRef(null);
 
   useEffect(() => {
     let on = true;
@@ -97,6 +100,10 @@ export default function District() {
     })();
     return () => { on = false; };
   }, [id]);
+
+  useEffect(() => () => {
+    if (campBlurTimeout.current) clearTimeout(campBlurTimeout.current);
+  }, []);
 
   const kpis = useMemo(() => {
     if (!row || !fields) return null;
@@ -196,6 +203,20 @@ export default function District() {
     return list;
   }, [campRows, campFields, campSearch]);
 
+  const campusSuggestions = useMemo(() => {
+    if (!campSearch.trim()) return [];
+    return campusesSorted.slice(0, 6);
+  }, [campusesSorted, campSearch]);
+
+  const showCampusSuggestions = campFocused && campusSuggestions.length > 0;
+
+  const handleCampusSelect = (item) => {
+    setCampSearch(item.name);
+    if (campBlurTimeout.current) clearTimeout(campBlurTimeout.current);
+    setCampFocused(false);
+    navigate(`/campus/${encodeURIComponent(item.id)}`);
+  };
+
   return (
     <div className="space-y-8 px-4 md:px-8">
       {/* Header */}
@@ -237,12 +258,37 @@ export default function District() {
           <div className="text-sm text-gray-500">{campusesSorted.length} campus{campusesSorted.length === 1 ? "" : "es"}</div>
         </div>
 
-        <input
-          className="border rounded-xl px-3 py-2 w-full md:w-96 mb-4"
-          placeholder="Search campus name or ID"
-          value={campSearch}
-          onChange={(e) => setCampSearch(e.target.value)}
-        />
+        <div className="autocomplete w-full md:w-96 mb-4">
+          <input
+            className="border rounded-xl px-3 py-2 w-full"
+            placeholder="Search campus name or ID"
+            value={campSearch}
+            onChange={(e) => setCampSearch(e.target.value)}
+            onFocus={() => {
+              if (campBlurTimeout.current) clearTimeout(campBlurTimeout.current);
+              setCampFocused(true);
+            }}
+            onBlur={() => {
+              campBlurTimeout.current = window.setTimeout(() => setCampFocused(false), 120);
+            }}
+          />
+          {showCampusSuggestions && (
+            <div className="suggestion-panel suggestion-panel--overlay">
+              {campusSuggestions.map((c) => (
+                <button
+                  key={`campus-${c.id}`}
+                  type="button"
+                  className="suggestion-option"
+                  onMouseDown={(evt) => evt.preventDefault()}
+                  onClick={() => handleCampusSelect(c)}
+                >
+                  <span className="suggestion-option__label">{c.name}</span>
+                  <span className="suggestion-option__meta">Campus • {c.id}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">

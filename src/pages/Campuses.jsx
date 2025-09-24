@@ -1,7 +1,8 @@
 // src/pages/Campuses.jsx
-import React, { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { getAllCampuses } from "../lib/campuses";
+import useSearchSuggestions from "../hooks/useSearchSuggestions";
 
 const fmtInt = (n) =>
   n === null || n === undefined || n === "" || Number.isNaN(+n)
@@ -13,6 +14,13 @@ export default function CampusesPage() {
   const [fields, setFields] = useState(null);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [focused, setFocused] = useState(false);
+  const blurTimeout = useRef(null);
+  const nav = useNavigate();
+  const { suggestions: campusSuggestions } = useSearchSuggestions(q, {
+    limit: 6,
+    types: ["campus"],
+  });
 
   useEffect(() => {
     let on = true;
@@ -30,6 +38,25 @@ export default function CampusesPage() {
     })();
     return () => { on = false; };
   }, []);
+
+  useEffect(() => () => {
+    if (blurTimeout.current) clearTimeout(blurTimeout.current);
+  }, []);
+
+  const showSuggestions = focused && q.trim().length > 0 && campusSuggestions.length > 0;
+
+  const handleSelect = (item) => {
+    setQ(item.name);
+    if (blurTimeout.current) clearTimeout(blurTimeout.current);
+    setFocused(false);
+    if (item.type === "campus") {
+      nav(`/campus/${encodeURIComponent(item.id)}`);
+    } else if (item.type === "district") {
+      nav(`/district/${encodeURIComponent(item.id)}`);
+    } else {
+      nav(`/search?q=${encodeURIComponent(item.name)}`);
+    }
+  };
 
   const list = useMemo(() => {
     if (!rows || !fields) return [];
@@ -75,12 +102,41 @@ export default function CampusesPage() {
     <div className="space-y-6 px-4 md:px-8">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-3xl font-extrabold tracking-tight">Campuses</h1>
-        <input
-          className="border rounded-xl px-3 py-2 w-full md:w-96"
-          placeholder="Search campus name, ID, or district"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
+        <div className="autocomplete w-full md:w-96">
+          <input
+            className="border rounded-xl px-3 py-2 w-full"
+            placeholder="Search campus name, ID, or district"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onFocus={() => {
+              if (blurTimeout.current) clearTimeout(blurTimeout.current);
+              setFocused(true);
+            }}
+            onBlur={() => {
+              blurTimeout.current = window.setTimeout(() => setFocused(false), 120);
+            }}
+          />
+          {showSuggestions && (
+            <div className="suggestion-panel suggestion-panel--overlay">
+              {campusSuggestions.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className="suggestion-option"
+                  onMouseDown={(evt) => evt.preventDefault()}
+                  onClick={() => handleSelect(item)}
+                >
+                  <span className="suggestion-option__label">{item.name}</span>
+                  <span className="suggestion-option__meta">
+                    {item.type === "campus"
+                      ? `Campus • ${item.id}${item.district ? ` • ${item.district}` : ""}`
+                      : `District • ${item.id}`}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {loading ? (

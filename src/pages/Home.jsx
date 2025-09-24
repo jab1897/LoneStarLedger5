@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import StatCard from "../ui/StatCard";
 import DataTable from "../ui/DataTable";
 import { getStatewideStats, getDetectedFields } from "../lib/data";
 import { loadSuperintendents, loadIndebted, loadPerformance } from "../lib/homeData";
 import TexasMap from "../components/TexasMap";
+import useSearchSuggestions from "../hooks/useSearchSuggestions";
 
 const fmtInt = (n) =>
   typeof n === "number" && !Number.isNaN(n)
@@ -35,7 +36,10 @@ export default function Home() {
   const [performance, setPerformance] = useState([]);
   const [superintendents, setSuperintendents] = useState([]);
   const [heroSearch, setHeroSearch] = useState("");
+  const [heroFocused, setHeroFocused] = useState(false);
+  const heroBlurTimeout = useRef(null);
   const navigate = useNavigate();
+  const { suggestions: heroSuggestions } = useSearchSuggestions(heroSearch, { limit: 6 });
 
   useEffect(() => {
     (async () => {
@@ -57,6 +61,12 @@ export default function Home() {
     loadIndebted().then(setIndebted).catch(() => setIndebted([]));
     loadPerformance().then(setPerformance).catch(() => setPerformance([]));
     loadSuperintendents().then(setSuperintendents).catch(() => setSuperintendents([]));
+  }, []);
+
+  useEffect(() => () => {
+    if (heroBlurTimeout.current) {
+      clearTimeout(heroBlurTimeout.current);
+    }
   }, []);
 
   const debtCols = [
@@ -161,6 +171,22 @@ export default function Home() {
     navigate(`/search?q=${encodeURIComponent(next)}`);
   };
 
+  const handleHeroSelect = (item) => {
+    setHeroSearch(item.name);
+    if (heroBlurTimeout.current) clearTimeout(heroBlurTimeout.current);
+    setHeroFocused(false);
+    if (item.type === "district") {
+      navigate(`/district/${encodeURIComponent(item.id)}`);
+    } else if (item.type === "campus") {
+      navigate(`/campus/${encodeURIComponent(item.id)}`);
+    } else {
+      navigate(`/search?q=${encodeURIComponent(item.name)}`);
+    }
+  };
+
+  const heroHasSuggestions =
+    heroFocused && heroSearch.trim().length > 0 && heroSuggestions.length > 0;
+
   return (
     <div className="space-y-12">
       <section className="hero">
@@ -168,14 +194,43 @@ export default function Home() {
           <h1>Follow the money in Texas schools</h1>
           <p className="lead">Search any district or campus and see spending beside student results.</p>
           <form className="hero-actions" role="search" onSubmit={onHeroSearch}>
-            <input
-              className="input"
-              type="search"
-              placeholder="Search a district or campus"
-              aria-label="Search a district or campus"
-              value={heroSearch}
-              onChange={(e) => setHeroSearch(e.target.value)}
-            />
+            <div className="autocomplete">
+              <input
+                className="input"
+                type="search"
+                placeholder="Search a district or campus"
+                aria-label="Search a district or campus"
+                value={heroSearch}
+                onChange={(e) => setHeroSearch(e.target.value)}
+                onFocus={() => {
+                  if (heroBlurTimeout.current) clearTimeout(heroBlurTimeout.current);
+                  setHeroFocused(true);
+                }}
+                onBlur={() => {
+                  heroBlurTimeout.current = window.setTimeout(() => setHeroFocused(false), 120);
+                }}
+              />
+              {heroHasSuggestions && (
+                <div className="suggestion-panel suggestion-panel--overlay">
+                  {heroSuggestions.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className="suggestion-option"
+                      onMouseDown={(evt) => evt.preventDefault()}
+                      onClick={() => handleHeroSelect(item)}
+                    >
+                      <span className="suggestion-option__label">{item.name}</span>
+                      <span className="suggestion-option__meta">
+                        {item.type === "district"
+                          ? `District • ${item.id}${item.county ? ` • ${item.county}` : ""}`
+                          : `Campus • ${item.id}${item.district ? ` • ${item.district}` : ""}`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button className="btn btn-primary" type="submit">
               Search my district
             </button>

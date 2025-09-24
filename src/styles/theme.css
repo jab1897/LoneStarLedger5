@@ -41,6 +41,7 @@
   --border: rgba(2, 6, 23, 0.08);
   --pill-bg: var(--surface-2);
   --pill-border: var(--border);
+  --pill-text: #0F172A;
 }
 
 :root[data-theme="dark"] {
@@ -58,6 +59,7 @@
   --bg-tint-2: #0B1729;
   --pill-bg: rgba(148, 163, 184, 0.22);
   --pill-border: rgba(148, 163, 184, 0.38);
+  --pill-text: #0F172A;
 }
 
 html, body {
@@ -157,8 +159,9 @@ a:hover { text-decoration: underline; }
 }
 .kpi .label { color: var(--text-muted); font-size: 0.85rem; }
 .kpi .value {
-  font-size: clamp(1.75rem, 3.5vw, 2.15rem);
-  line-height: 1.1;
+  font-size: clamp(1.35rem, 2.6vw, 1.85rem);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
 }
@@ -351,7 +354,7 @@ a:hover { text-decoration: underline; }
   border-radius: var(--radius-md);
   background: var(--pill-bg);
   border: 1px solid var(--pill-border);
-  color: var(--text-0);
+  color: var(--pill-text);
   font-size: 0.85rem;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
@@ -370,7 +373,9 @@ a:hover { text-decoration: underline; }
 .notice.success { color: var(--success-500); }
 
 .suggestion-panel {
-  max-width: 420px;
+  width: 100%;
+  max-width: 100%;
+  margin-top: 0.35rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--surface-0);
@@ -389,6 +394,50 @@ a:hover { text-decoration: underline; }
   cursor: pointer;
 }
 .suggestion-option:hover { background: var(--surface-2); }
+
+.suggestion-option__label {
+  display: block;
+  font-weight: 600;
+}
+
+.suggestion-option__meta {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.125rem;
+}
+
+.autocomplete {
+  position: relative;
+}
+
+.autocomplete .input {
+  width: 100%;
+}
+
+.suggestion-panel--overlay {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  width: 100%;
+  max-height: 18rem;
+  overflow-y: auto;
+  z-index: 30;
+  margin-top: 0;
+}
+
+.hero-actions .autocomplete {
+  flex: 1 1 320px;
+  min-width: min(520px, 100%);
+}
+
+.hero-actions .autocomplete .input {
+  min-width: 100%;
+}
+
+.site-search .autocomplete {
+  min-width: 100%;
+}
 
 .data-table {
   border-radius: var(--radius-lg);
