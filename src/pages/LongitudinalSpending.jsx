@@ -6,7 +6,6 @@ import {
 } from "recharts";
 
 // Absolute URLs to CSV files served from public/
-const TOTALS_CSV = "/data/Spending_Longitudinal_Totals.csv";
 const BY_OBJECT_CSV = "/data/Spending_By_Object_Long.csv";
 
 // Small CSV parser that supports quoted fields and embedded commas
@@ -85,6 +84,67 @@ const fmtShortUSD = (n) =>
     notation: "compact",
     maximumFractionDigits: 1,
   }).format(n || 0);
+
+// Robust number parsing for currency strings and plain numbers
+const toNum = (v) => {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const s = v.replace(/[^\d.-]/g, "");
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+  return 0;
+};
+
+// Formatters for KPIs
+const fmtUSD = (n) =>
+  new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+    .format(Number.isFinite(n) ? n : 0);
+const fmtInt = (n) =>
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 })
+    .format(Number.isFinite(n) ? Math.round(n) : 0);
+const fmtPct = (r) =>
+  Number.isFinite(r)
+    ? new Intl.NumberFormat("en-US", { style: "percent", maximumFractionDigits: 1 }).format(r)
+    : "—";
+const signed = (n, format) => (Number.isFinite(n) ? (n > 0 ? "+" : "") + (typeof format === "function" ? format(n) : n) : "—");
+
+// Generic change calculators on a Map<year, value>
+function calcChange(map) {
+  const years = Array.from(map.keys()).sort((a, b) => a - b);
+  if (years.length < 2) return null;
+  const startYear = years[0];
+  const endYear = years[years.length - 1];
+  const start = toNum(map.get(startYear));
+  const end = toNum(map.get(endYear));
+  const delta = end - start;
+  const pct = start !== 0 ? delta / start : null;
+  const trend = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+  return { startYear, endYear, start, end, delta, pct, trend };
+}
+function calcShareByYear(numerByYear, denomByYear) {
+  const years = Array.from(numerByYear.keys()).filter((y) => denomByYear.has(y)).sort((a, b) => a - b);
+  const map = new Map();
+  years.forEach((y) => {
+    const num = toNum(numerByYear.get(y));
+    const den = toNum(denomByYear.get(y));
+    map.set(y, den > 0 ? num / den : NaN);
+  });
+  return map;
+}
+function calcCAGR(map) {
+  const ch = calcChange(map);
+  if (!ch) return null;
+  const years = ch.endYear - ch.startYear;
+  if (!Number.isFinite(years) || years <= 0 || ch.start <= 0 || ch.end <= 0) return null;
+  const cagr = Math.pow(ch.end / ch.start, 1 / years) - 1;
+  const trend = cagr > 0 ? "up" : cagr < 0 ? "down" : "flat";
+  return { ...ch, cagr, trend };
+}
+
+// Data files
+const TOTALS_CSV = "/data/Spending_Longitudinal_Totals.csv";
+const ENROLLMENT_CSV = "/data/Enrollment_Longitudinal.csv";
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState(false);
@@ -234,6 +294,8 @@ export default function LongitudinalSpending() {
   const [selected, setSelected] = useState(["STATEWIDE"]); // default statewide chip
   const [selectedObjects, setSelectedObjects] = useState(DEFAULT_OBJECTS);
   const [objectSelectValue, setObjectSelectValue] = useState("");
+  const [performanceRows, setPerformanceRows] = useState([]); // district grades
+  const [enrollmentRows, setEnrollmentRows] = useState([]);   // normalized long rows
   const loadCancelled = useRef(false);
 
   const isMobile = useIsMobile();
@@ -248,7 +310,20 @@ export default function LongitudinalSpending() {
   const loadSpendingData = useCallback(async () => {
     setLoading(true);
     try {
-      const [tRows, oRows] = await Promise.all([loadCsv(TOTALS_CSV), loadCsv(BY_OBJECT_CSV)]);
+      const [tRows, oRows, perfMaybe, enrWide] = await Promise.all([
+        loadCsv(TOTALS_CSV),
+        loadCsv(BY_OBJECT_CSV),
+        // Prefer existing helper if present, otherwise silently ignore
+        (async () => {
+          try {
+            const { loadPerformance } = await import("../lib/homeData");
+            return await loadPerformance();
+          } catch {
+            try { return await loadCsv("/data/home/performance.csv"); } catch { return []; }
+          }
+        })(),
+        loadCsv(ENROLLMENT_CSV).catch(() => []),
+      ]);
 
       if (loadCancelled.current) return;
 
@@ -273,6 +348,21 @@ export default function LongitudinalSpending() {
 
       setTotals(t);
       setObjects(o);
+      setPerformanceRows(Array.isArray(perfMaybe) ? perfMaybe : []);
+      // Normalize enrollment wide to long: {DISTRICT_N, District_Name, Year, Enrollment}
+      const enrLong = (Array.isArray(enrWide) ? enrWide : []).flatMap(r => {
+        const id = String(r.District ?? r.DISTRICT_N ?? r.District_ID ?? r.id ?? "").trim();
+        const name = String(r["LEA Name"] ?? r.District_Name ?? r.NAME ?? "").trim();
+        if (!id) return [];
+        return Object.keys(r).map(k => {
+          const y = Number.parseInt(k, 10);
+          if (!Number.isFinite(y) || String(y).length !== 4) return null;
+          const val = toNum(r[k]);
+          if (!Number.isFinite(val)) return null;
+          return { DISTRICT_N: id, District_Name: name, Year: y, Enrollment: val };
+        }).filter(Boolean);
+      });
+      setEnrollmentRows(enrLong);
       setError("");
     } catch (e) {
       console.error("Data load error", e);
@@ -298,6 +388,20 @@ export default function LongitudinalSpending() {
     }
     return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
   }, [totals, objects]);
+
+  // Grades lookup: id -> { grade, score }
+  const gradesById = useMemo(() => {
+    const m = new Map();
+    (performanceRows || []).forEach(r => {
+      const id = String(r.id ?? r.DISTRICT_N ?? r.District_ID ?? "").trim();
+      if (!id) return;
+      const grade = String(r.rating ?? r.DISTRICT_GRADE ?? r.RATING ?? "").trim();
+      const scoreRaw = r.score ?? r.OVERALL_SCORE ?? r.DISTRICT_SCORE;
+      const score = Number.isFinite(Number(scoreRaw)) ? Number(scoreRaw) : undefined;
+      m.set(id, { grade, score });
+    });
+    return m;
+  }, [performanceRows]);
 
   const addDistrict = (id) => { if (!selected.includes(id)) setSelected(prev => [...prev, id]); setQuery(""); };
   const removeDistrict = (id) => setSelected(prev => prev.filter(x => x !== id));
@@ -332,6 +436,109 @@ export default function LongitudinalSpending() {
     });
     return map;
   }, [objects, selected]);
+
+  // Collect all known object keys from the aggregated year map
+  const allObjectKeys = useMemo(() => {
+    const s = new Set();
+    objectsByYear.forEach(row => Object.keys(row || {}).forEach(k => s.add(k)));
+    return Array.from(s);
+  }, [objectsByYear]);
+
+  // Try to resolve the teacher pay object key
+  const teacherObjectKey = useMemo(() => {
+    if (!allObjectKeys.length) return null;
+    const guesses = [
+      "Teacher Pay & Other Professionals",
+      "Teachers and Other Professional Personnel",
+      "Teacher Salaries",
+      "6119 Teachers and Other Professional Personnel",
+      "611X Teachers",
+    ].map(s => s.toLowerCase());
+    const lower = allObjectKeys.map(s => s.toLowerCase());
+    // exact name guesses
+    for (const g of guesses) {
+      const idx = lower.findIndex(k => k === g);
+      if (idx >= 0) return allObjectKeys[idx];
+    }
+    // fuzzy match contains teacher and either pay or salary
+    const idx2 = lower.findIndex(k => k.includes("teacher") && (k.includes("pay") || k.includes("salari")));
+    if (idx2 >= 0) return allObjectKeys[idx2];
+    // last resort: any key containing teacher
+    const idx3 = lower.findIndex(k => k.includes("teacher"));
+    return idx3 >= 0 ? allObjectKeys[idx3] : null;
+  }, [allObjectKeys]);
+
+  // Resolve non classroom service keys by pattern
+  const nonClassroomKeys = useMemo(() => {
+    if (!allObjectKeys.length) return [];
+    const pats = [/consult/i, /professional\s*services?/i, /legal/i, /lobby/i, /misc/i, /contract/i];
+    return allObjectKeys.filter(k => pats.some(rx => rx.test(k)));
+  }, [allObjectKeys]);
+
+  // Build KPI numerator maps by year
+  const teacherPayByYear = useMemo(() => {
+    const map = new Map();
+    if (!teacherObjectKey) return map;
+    objectsByYear.forEach((row, y) => map.set(y, toNum(row?.[teacherObjectKey])));
+    return map;
+  }, [objectsByYear, teacherObjectKey]);
+
+  const nonClassroomByYear = useMemo(() => {
+    const map = new Map();
+    objectsByYear.forEach((row, y) => {
+      let sum = 0;
+      nonClassroomKeys.forEach(k => { sum += toNum(row?.[k]); });
+      map.set(y, sum);
+    });
+    return map;
+  }, [objectsByYear, nonClassroomKeys]);
+
+  // Enrollment aggregated across selected
+  const enrollmentByYear = useMemo(() => {
+    const map = new Map();
+    (enrollmentRows || []).forEach(r => {
+      if (!selected.includes(r.DISTRICT_N)) return;
+      const y = Number(r.Year);
+      if (!Number.isFinite(y)) return;
+      map.set(y, (map.get(y) || 0) + toNum(r.Enrollment));
+    });
+    return map;
+  }, [enrollmentRows, selected]);
+
+  // Per student series
+  const perStudentByYear = useMemo(() => {
+    const map = new Map();
+    enrollmentByYear.forEach((enr, y) => {
+      const total = toNum(totalsByYear.get(y));
+      if (Number.isFinite(enr) && enr > 0 && Number.isFinite(total)) {
+        map.set(y, total / enr);
+      }
+    });
+    return map;
+  }, [enrollmentByYear, totalsByYear]);
+
+  const teacherPerStudentByYear = useMemo(() => {
+    const map = new Map();
+    enrollmentByYear.forEach((enr, y) => {
+      const tp = toNum(teacherPayByYear.get(y));
+      if (Number.isFinite(enr) && enr > 0 && Number.isFinite(tp)) {
+        map.set(y, tp / enr);
+      }
+    });
+    return map;
+  }, [enrollmentByYear, teacherPayByYear]);
+
+  // KPI change objects
+  const kpiTotal = useMemo(() => calcChange(totalsByYear), [totalsByYear]);
+  const kpiTeacher = useMemo(() => calcChange(teacherPayByYear), [teacherPayByYear]);
+  const teacherShareByYear = useMemo(() => calcShareByYear(teacherPayByYear, totalsByYear), [teacherPayByYear, totalsByYear]);
+  const kpiTeacherShare = useMemo(() => calcChange(teacherShareByYear), [teacherShareByYear]);
+  const nonClassroomShareByYear = useMemo(() => calcShareByYear(nonClassroomByYear, totalsByYear), [nonClassroomByYear, totalsByYear]);
+  const kpiNonClassroomShare = useMemo(() => calcChange(nonClassroomShareByYear), [nonClassroomShareByYear]);
+  const kpiEnroll = useMemo(() => calcChange(enrollmentByYear), [enrollmentByYear]);
+  const perStudentChange = useMemo(() => calcChange(perStudentByYear), [perStudentByYear]);
+  const teacherPerStudentChange = useMemo(() => calcChange(teacherPerStudentByYear), [teacherPerStudentByYear]);
+  const totalCagr = useMemo(() => calcCAGR(totalsByYear), [totalsByYear]);
 
   const totalYears = useMemo(() => Array.from(totalsByYear.keys()).sort((a, b) => a - b), [totalsByYear]);
   const objectYears = useMemo(() => Array.from(objectsByYear.keys()).sort((a, b) => a - b), [objectsByYear]);
@@ -476,6 +683,126 @@ export default function LongitudinalSpending() {
 
         {loading && <div className="notice">Loading spending data</div>}
         {error && <div className="notice error">{error}</div>}
+      </section>
+
+      {/* KPIs */}
+      <section className="section-card space-y-4">
+        <h2 className="section-heading">Key metrics</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {/* Total funding change */}
+          <div className="stat-card">
+            <div className="kpi">
+              <div className="label">Total funding change</div>
+              <div className="value">
+                {kpiTotal ? `${signed(kpiTotal.pct, fmtPct)} (${signed(kpiTotal.delta, fmtUSD)})` : "—"}
+              </div>
+              {kpiTotal && <div className={`trend ${kpiTotal.trend}`}>{kpiTotal.startYear} to {kpiTotal.endYear}</div>}
+            </div>
+          </div>
+
+          {/* Teacher pay change */}
+          <div className="stat-card">
+            <div className="kpi">
+              <div className="label">Teacher pay change</div>
+              <div className="value">
+                {kpiTeacher && teacherObjectKey
+                  ? `${signed(kpiTeacher.pct, fmtPct)} (${signed(kpiTeacher.delta, fmtUSD)})`
+                  : teacherObjectKey ? "—" : "Teacher pay object not found"}
+              </div>
+              {kpiTeacher && <div className={`trend ${kpiTeacher.trend}`}>{kpiTeacher.startYear} to {kpiTeacher.endYear}</div>}
+            </div>
+          </div>
+
+          {/* Teacher pay share of total */}
+          <div className="stat-card">
+            <div className="kpi">
+              <div className="label">Teacher pay share of total</div>
+              <div className="value">
+                {kpiTeacherShare
+                  ? `${fmtPct(kpiTeacherShare.end)} (${signed(kpiTeacherShare.delta * 100, (n) => `${n.toFixed(1)} pp`)})`
+                  : "—"}
+              </div>
+              {kpiTeacherShare && <div className={`trend ${kpiTeacherShare.trend}`}>{kpiTeacherShare.startYear} to {kpiTeacherShare.endYear}</div>}
+            </div>
+          </div>
+
+          {/* Non classroom services share */}
+          <div className="stat-card">
+            <div className="kpi">
+              <div className="label">Non classroom services share</div>
+              <div className="value">
+                {kpiNonClassroomShare
+                  ? `${fmtPct(kpiNonClassroomShare.end)} (${signed(kpiNonClassroomShare.delta * 100, (n) => `${n.toFixed(1)} pp`)})`
+                  : "—"}
+              </div>
+              {kpiNonClassroomShare && <div className={`trend ${kpiNonClassroomShare.trend}`}>{kpiNonClassroomShare.startYear} to {kpiNonClassroomShare.endYear}</div>}
+            </div>
+          </div>
+
+          {/* Change in enrollment */}
+          <div className="stat-card">
+            <div className="kpi">
+              <div className="label">Change in enrollment</div>
+              <div className="value">
+                {kpiEnroll
+                  ? `${signed(kpiEnroll.pct, fmtPct)} (${signed(kpiEnroll.delta, fmtInt)})`
+                  : "Add /data/Enrollment_Longitudinal.csv"}
+              </div>
+              {kpiEnroll && <div className={`trend ${kpiEnroll.trend}`}>{kpiEnroll.startYear} to {kpiEnroll.endYear}</div>}
+            </div>
+          </div>
+
+          {/* Per student funding change */}
+          <div className="stat-card">
+            <div className="kpi">
+              <div className="label">Per student funding change</div>
+              <div className="value">
+                {perStudentChange
+                  ? `${signed(perStudentChange.pct, fmtPct)} (${signed(perStudentChange.delta, fmtUSD)})`
+                  : "Add enrollment CSV"}
+              </div>
+              {perStudentChange && <div className={`trend ${perStudentChange.trend}`}>{perStudentChange.startYear} to {perStudentChange.endYear}</div>}
+            </div>
+          </div>
+
+          {/* Teacher pay per student change */}
+          <div className="stat-card">
+            <div className="kpi">
+              <div className="label">Teacher pay per student change</div>
+              <div className="value">
+                {teacherPerStudentChange && teacherObjectKey
+                  ? `${signed(teacherPerStudentChange.pct, fmtPct)} (${signed(teacherPerStudentChange.delta, fmtUSD)})`
+                  : "Requires enrollment and teacher pay"}
+              </div>
+              {teacherPerStudentChange && <div className={`trend ${teacherPerStudentChange.trend}`}>{teacherPerStudentChange.startYear} to {teacherPerStudentChange.endYear}</div>}
+            </div>
+          </div>
+
+          {/* Total funding CAGR */}
+          <div className="stat-card">
+            <div className="kpi">
+              <div className="label">Total funding CAGR</div>
+              <div className="value">{totalCagr ? fmtPct(totalCagr.cagr) : "—"}</div>
+              {totalCagr && <div className={`trend ${totalCagr.trend}`}>{totalCagr.startYear} to {totalCagr.endYear}</div>}
+            </div>
+          </div>
+
+          {/* District grade when a single non statewide district is selected */}
+          {(() => {
+            const nonState = selected.filter(id => id !== "STATEWIDE");
+            if (nonState.length !== 1) return null;
+            const only = nonState[0];
+            const g = gradesById.get(only);
+            return (
+              <div className="stat-card">
+                <div className="kpi">
+                  <div className="label">District grade</div>
+                  <div className="value">{g ? (g.grade || "Not found") : "Not found"}</div>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
       </section>
 
       {/* Overall spending */}
