@@ -400,11 +400,33 @@ export default function LongitudinalSpending() {
     setSelectedObjects(prev => prev.filter(item => item !== name));
   };
 
-  const handleObjectSelect = (event) => {
-    const { value } = event.target;
-    if (!value) return;
-    addObject(value);
-    setObjectSelectValue("");
+  // When the user types, show datalist suggestions and auto add on exact match
+  const handleObjectInputChange = (event) => {
+    const v = event.target.value;
+    setObjectSelectValue(v);
+    const match = objectOptions.find(
+      (opt) => opt.toLowerCase() === v.trim().toLowerCase()
+    );
+    if (match) {
+      addObject(match);
+      setObjectSelectValue("");
+    }
+  };
+
+  // Allow pressing Enter to add the typed value if it exactly matches an option
+  const handleObjectKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const v = objectSelectValue.trim();
+      if (!v) return;
+      const match = objectOptions.find(
+        (opt) => opt.toLowerCase() === v.toLowerCase()
+      );
+      if (match) {
+        addObject(match);
+        setObjectSelectValue("");
+      }
+    }
   };
 
   return (
@@ -533,22 +555,34 @@ export default function LongitudinalSpending() {
           <label htmlFor="object-filter" className="block text-sm font-semibold text-[var(--text-muted)]">
             Add or remove cost centers
           </label>
-          <select
-            id="object-filter"
-            value={objectSelectValue}
-            onChange={handleObjectSelect}
-            disabled={!objectOptions.length}
-            className="select"
-          >
-            <option value="" disabled>
-              {objectOptions.length ? "Select cost center" : "Loading cost centers"}
-            </option>
-            {objectOptions.map(name => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+          <div className="search-with-help">
+            <input
+              id="object-filter"
+              className="input input--with-inline-link"
+              type="text"
+              placeholder={objectOptions.length ? "Search cost centers then press Enter" : "Loading cost centers"}
+              value={objectSelectValue}
+              onChange={handleObjectInputChange}
+              onKeyDown={handleObjectKeyDown}
+              list="object-filter-list"
+              disabled={!objectOptions.length}
+              aria-label="Search cost centers"
+            />
+            <a
+              className="inline-help-link"
+              href="https://tea.texas.gov/finance-and-grants/financial-compliance/financial-accountability-system-resource-guide"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open the TEA Financial Accountability System Resource Guide"
+            >
+              Need Help Interpreting the Cost Centers? Click here to find what they mean
+            </a>
+            <datalist id="object-filter-list">
+              {objectOptions.map(name => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          </div>
           <div className="flex flex-wrap gap-2">
             {selectedObjects.map(name => (
               <button

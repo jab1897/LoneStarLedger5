@@ -225,6 +225,44 @@ a:hover { text-decoration: underline; }
 }
 .select:focus { outline: 3px solid var(--focus-500); outline-offset: 2px; }
 
+/* Search field with inline help link for cost centers */
+.search-with-help {
+  position: relative;
+  max-width: min(520px, 100%);
+}
+.input--with-inline-link {
+  padding-right: 14rem; /* space so typed text does not sit under the link on wide screens */
+}
+.inline-help-link {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.8rem;
+  color: var(--brand-500);
+  text-decoration: underline;
+  white-space: nowrap;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  z-index: 1;
+}
+@media (max-width: 640px) {
+  .search-with-help {
+    display: grid;
+    gap: 0.5rem;
+  }
+  .input--with-inline-link {
+    padding-right: 0.75rem; /* return to normal padding on small screens */
+  }
+  .inline-help-link {
+    position: static;
+    transform: none;
+    max-width: 100%;
+    white-space: normal;
+  }
+}
+
 .stat-card {
   display: grid;
   gap: 0.75rem;
