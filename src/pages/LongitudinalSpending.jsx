@@ -100,6 +100,19 @@ const toNum = (v) => {
 const fmtUSD = (n) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
     .format(Number.isFinite(n) ? n : 0);
+// Short currency for big deltas: $30.7 Billion, $7.3 Million, else full $
+const fmtUSDShort = (n) => {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return "$0";
+  const abs = Math.abs(v);
+  const sign = v < 0 ? "-" : "";
+  const trim = (x) => String(x.toFixed(1)).replace(/\.0$/, "");
+  if (abs >= 1_000_000_000) return `${sign}$${trim(abs / 1_000_000_000)} Billion`;
+  if (abs >= 1_000_000) return `${sign}$${trim(abs / 1_000_000)} Million`;
+  // fall back to regular currency for smaller values
+  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })
+    .format(v);
+};
 const fmtInt = (n) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 })
     .format(Number.isFinite(n) ? Math.round(n) : 0);
@@ -694,7 +707,7 @@ export default function LongitudinalSpending() {
             <div className="kpi">
               <div className="label">Total funding change</div>
               <div className="value">
-                {kpiTotal ? `${signed(kpiTotal.pct, fmtPct)} (${signed(kpiTotal.delta, fmtUSD)})` : "—"}
+                {kpiTotal ? `${signed(kpiTotal.pct, fmtPct)} (${signed(kpiTotal.delta, fmtUSDShort)})` : "—"}
               </div>
               {kpiTotal && <div className={`trend ${kpiTotal.trend}`}>{kpiTotal.startYear} to {kpiTotal.endYear}</div>}
             </div>
@@ -706,7 +719,7 @@ export default function LongitudinalSpending() {
               <div className="label">Teacher pay change</div>
               <div className="value">
                 {kpiTeacher && teacherObjectKey
-                  ? `${signed(kpiTeacher.pct, fmtPct)} (${signed(kpiTeacher.delta, fmtUSD)})`
+                  ? `${signed(kpiTeacher.pct, fmtPct)} (${signed(kpiTeacher.delta, fmtUSDShort)})`
                   : teacherObjectKey ? "—" : "Teacher pay object not found"}
               </div>
               {kpiTeacher && <div className={`trend ${kpiTeacher.trend}`}>{kpiTeacher.startYear} to {kpiTeacher.endYear}</div>}
@@ -719,7 +732,7 @@ export default function LongitudinalSpending() {
               <div className="label">Teacher pay share of total</div>
               <div className="value">
                 {kpiTeacherShare
-                  ? `${fmtPct(kpiTeacherShare.end)} (${signed(kpiTeacherShare.delta * 100, (n) => `${n.toFixed(1)} pp`)})`
+                  ? `${fmtPct(kpiTeacherShare.end)} (${signed(kpiTeacherShare.delta * 100, (n) => `${n.toFixed(1)} percentage points`)})`
                   : "—"}
               </div>
               {kpiTeacherShare && <div className={`trend ${kpiTeacherShare.trend}`}>{kpiTeacherShare.startYear} to {kpiTeacherShare.endYear}</div>}
@@ -732,7 +745,7 @@ export default function LongitudinalSpending() {
               <div className="label">Non classroom services share</div>
               <div className="value">
                 {kpiNonClassroomShare
-                  ? `${fmtPct(kpiNonClassroomShare.end)} (${signed(kpiNonClassroomShare.delta * 100, (n) => `${n.toFixed(1)} pp`)})`
+                  ? `${fmtPct(kpiNonClassroomShare.end)} (${signed(kpiNonClassroomShare.delta * 100, (n) => `${n.toFixed(1)} percentage points`)})`
                   : "—"}
               </div>
               {kpiNonClassroomShare && <div className={`trend ${kpiNonClassroomShare.trend}`}>{kpiNonClassroomShare.startYear} to {kpiNonClassroomShare.endYear}</div>}
@@ -758,7 +771,7 @@ export default function LongitudinalSpending() {
               <div className="label">Per student funding change</div>
               <div className="value">
                 {perStudentChange
-                  ? `${signed(perStudentChange.pct, fmtPct)} (${signed(perStudentChange.delta, fmtUSD)})`
+                  ? `${signed(perStudentChange.pct, fmtPct)} (${signed(perStudentChange.delta, fmtUSDShort)})`
                   : "Add enrollment CSV"}
               </div>
               {perStudentChange && <div className={`trend ${perStudentChange.trend}`}>{perStudentChange.startYear} to {perStudentChange.endYear}</div>}
@@ -768,10 +781,10 @@ export default function LongitudinalSpending() {
           {/* Teacher pay per student change */}
           <div className="stat-card">
             <div className="kpi">
-              <div className="label">Teacher pay per student change</div>
+              <div className="label">Change in teacher pay per student</div>
               <div className="value">
                 {teacherPerStudentChange && teacherObjectKey
-                  ? `${signed(teacherPerStudentChange.pct, fmtPct)} (${signed(teacherPerStudentChange.delta, fmtUSD)})`
+                  ? `${signed(teacherPerStudentChange.pct, fmtPct)} (${signed(teacherPerStudentChange.delta, fmtUSDShort)})`
                   : "Requires enrollment and teacher pay"}
               </div>
               {teacherPerStudentChange && <div className={`trend ${teacherPerStudentChange.trend}`}>{teacherPerStudentChange.startYear} to {teacherPerStudentChange.endYear}</div>}
@@ -781,7 +794,7 @@ export default function LongitudinalSpending() {
           {/* Total funding CAGR */}
           <div className="stat-card">
             <div className="kpi">
-              <div className="label">Total funding CAGR</div>
+              <div className="label">Average yearly funding growth</div>
               <div className="value">{totalCagr ? fmtPct(totalCagr.cagr) : "—"}</div>
               {totalCagr && <div className={`trend ${totalCagr.trend}`}>{totalCagr.startYear} to {totalCagr.endYear}</div>}
             </div>
