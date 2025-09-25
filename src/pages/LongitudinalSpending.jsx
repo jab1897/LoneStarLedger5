@@ -1,5 +1,5 @@
 // src/pages/LongitudinalSpending.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend,
   ResponsiveContainer, BarChart, Bar, CartesianGrid
@@ -234,6 +234,7 @@ export default function LongitudinalSpending() {
   const [selected, setSelected] = useState(["STATEWIDE"]); // default statewide chip
   const [selectedObjects, setSelectedObjects] = useState(DEFAULT_OBJECTS);
   const [objectSelectValue, setObjectSelectValue] = useState("");
+  const loadCancelled = useRef(false);
 
   const isMobile = useIsMobile();
   const CHART_H_LINE = isMobile ? 280 : 360;
@@ -244,45 +245,50 @@ export default function LongitudinalSpending() {
   const ACTIVE_DOT_R = isMobile ? 6.5 : 7.5;
   const chartColors = useChartColors();
 
-  useEffect(() => {
-    let cancelled = false;
-    async function go() {
-      try {
-        setLoading(true);
-        const [tRows, oRows] = await Promise.all([loadCsv(TOTALS_CSV), loadCsv(BY_OBJECT_CSV)]);
+  const loadSpendingData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [tRows, oRows] = await Promise.all([loadCsv(TOTALS_CSV), loadCsv(BY_OBJECT_CSV)]);
 
-        // normalize column names exactly as expected
-        const t = tRows.map(r => ({
-          DISTRICT_N: r.DISTRICT_N ?? r.DISTRICT ?? r.District_ID ?? "",
-          District_Name: r.District_Name ?? r.DISTNAME ?? r.District ?? "",
-          Year: Number(r.Year),
-          Total_Spending: toNumber(r.Total_Spending ?? r.Total ?? r.Amount ?? r.SumOfACTAMT)
-        })).filter(r => r.Year && r.DISTRICT_N);
+      if (loadCancelled.current) return;
 
-        const o = oRows.map(r => ({
-          DISTRICT_N: r.DISTRICT_N ?? r.DISTRICT ?? r.District_ID ?? "",
-          District_Name: r.District_Name ?? r.DISTNAME ?? r.District ?? "",
-          Year: Number(r.Year),
-          Object_Code: r.Object_Code ?? r.OBJECT ?? "",
-          Object_Description_Long: r.Object_Description_Long ?? r.OBJECTX_LONG ?? r.Object_Long ?? "",
-          Object_Spending: toNumber(r.Object_Spending ?? r.Amount ?? r.SumOfACTAMT)
-        })).filter(r => r.Year && r.DISTRICT_N && r.Object_Description_Long);
+      // normalize column names exactly as expected
+      const t = tRows.map(r => ({
+        DISTRICT_N: r.DISTRICT_N ?? r.DISTRICT ?? r.District_ID ?? "",
+        District_Name: r.District_Name ?? r.DISTNAME ?? r.District ?? "",
+        Year: Number(r.Year),
+        Total_Spending: toNumber(r.Total_Spending ?? r.Total ?? r.Amount ?? r.SumOfACTAMT)
+      })).filter(r => r.Year && r.DISTRICT_N);
 
-        if (!cancelled) {
-          setTotals(t);
-          setObjects(o);
-          setError("");
-        }
-      } catch (e) {
-        console.error("Data load error", e);
-        if (!cancelled) setError("Could not load spending data");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      const o = oRows.map(r => ({
+        DISTRICT_N: r.DISTRICT_N ?? r.DISTRICT ?? r.District_ID ?? "",
+        District_Name: r.District_Name ?? r.DISTNAME ?? r.District ?? "",
+        Year: Number(r.Year),
+        Object_Code: r.Object_Code ?? r.OBJECT ?? "",
+        Object_Description_Long: r.Object_Description_Long ?? r.OBJECTX_LONG ?? r.Object_Long ?? "",
+        Object_Spending: toNumber(r.Object_Spending ?? r.Amount ?? r.SumOfACTAMT)
+      })).filter(r => r.Year && r.DISTRICT_N && r.Object_Description_Long);
+
+      if (loadCancelled.current) return;
+
+      setTotals(t);
+      setObjects(o);
+      setError("");
+    } catch (e) {
+      console.error("Data load error", e);
+      if (!loadCancelled.current) setError("Could not load spending data");
+    } finally {
+      if (!loadCancelled.current) setLoading(false);
     }
-    go();
-    return () => { cancelled = true; };
-  }, []);
+  }, [loadCancelled, setError, setLoading, setObjects, setTotals]);
+
+  useEffect(() => {
+    loadCancelled.current = false;
+    loadSpendingData();
+    return () => {
+      loadCancelled.current = true;
+    };
+  }, [loadSpendingData]);
 
   const districts = useMemo(() => {
     const map = new Map();
