@@ -57,8 +57,8 @@
   --grid-color: rgba(147, 197, 253, 0.08);
   --bg-tint-1: #0E1A2E;
   --bg-tint-2: #0B1729;
-  --pill-bg: rgba(148, 163, 184, 0.22);
-  --pill-border: rgba(148, 163, 184, 0.38);
+  --pill-bg: #FFFFFF;
+  --pill-border: rgba(255, 255, 255, 0.32);
   --pill-text: #0F172A;
 }
 
@@ -224,6 +224,41 @@ a:hover { text-decoration: underline; }
   box-shadow: var(--shadow-1);
 }
 .select:focus { outline: 3px solid var(--focus-500); outline-offset: 2px; }
+
+/* Search field with inline help link for cost centers */
+.search-with-help {
+  display: grid;
+  align-items: center;
+  gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.input--with-inline-link {
+  width: 100%;
+  min-width: 0;
+  padding-right: 0.75rem;
+}
+.inline-help-link {
+  font-size: 0.8rem;
+  color: var(--brand-500);
+  text-decoration: underline;
+  justify-self: end;
+  text-align: right;
+  max-width: 280px;
+}
+:root[data-theme="dark"] .inline-help-link {
+  color: #FFFFFF;
+}
+@media (max-width: 640px) {
+  .search-with-help {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+  .inline-help-link {
+    justify-self: start;
+    text-align: left;
+    max-width: 100%;
+  }
+}
 
 .stat-card {
   display: grid;

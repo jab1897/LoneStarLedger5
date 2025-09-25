@@ -1,5 +1,5 @@
 // src/pages/LongitudinalSpending.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend,
   ResponsiveContainer, BarChart, Bar, CartesianGrid
@@ -234,6 +234,7 @@ export default function LongitudinalSpending() {
   const [selected, setSelected] = useState(["STATEWIDE"]); // default statewide chip
   const [selectedObjects, setSelectedObjects] = useState(DEFAULT_OBJECTS);
   const [objectSelectValue, setObjectSelectValue] = useState("");
+  const loadCancelled = useRef(false);
 
   const isMobile = useIsMobile();
   const CHART_H_LINE = isMobile ? 280 : 360;
@@ -244,45 +245,50 @@ export default function LongitudinalSpending() {
   const ACTIVE_DOT_R = isMobile ? 6.5 : 7.5;
   const chartColors = useChartColors();
 
-  useEffect(() => {
-    let cancelled = false;
-    async function go() {
-      try {
-        setLoading(true);
-        const [tRows, oRows] = await Promise.all([loadCsv(TOTALS_CSV), loadCsv(BY_OBJECT_CSV)]);
+  const loadSpendingData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [tRows, oRows] = await Promise.all([loadCsv(TOTALS_CSV), loadCsv(BY_OBJECT_CSV)]);
 
-        // normalize column names exactly as expected
-        const t = tRows.map(r => ({
-          DISTRICT_N: r.DISTRICT_N ?? r.DISTRICT ?? r.District_ID ?? "",
-          District_Name: r.District_Name ?? r.DISTNAME ?? r.District ?? "",
-          Year: Number(r.Year),
-          Total_Spending: toNumber(r.Total_Spending ?? r.Total ?? r.Amount ?? r.SumOfACTAMT)
-        })).filter(r => r.Year && r.DISTRICT_N);
+      if (loadCancelled.current) return;
 
-        const o = oRows.map(r => ({
-          DISTRICT_N: r.DISTRICT_N ?? r.DISTRICT ?? r.District_ID ?? "",
-          District_Name: r.District_Name ?? r.DISTNAME ?? r.District ?? "",
-          Year: Number(r.Year),
-          Object_Code: r.Object_Code ?? r.OBJECT ?? "",
-          Object_Description_Long: r.Object_Description_Long ?? r.OBJECTX_LONG ?? r.Object_Long ?? "",
-          Object_Spending: toNumber(r.Object_Spending ?? r.Amount ?? r.SumOfACTAMT)
-        })).filter(r => r.Year && r.DISTRICT_N && r.Object_Description_Long);
+      // normalize column names exactly as expected
+      const t = tRows.map(r => ({
+        DISTRICT_N: r.DISTRICT_N ?? r.DISTRICT ?? r.District_ID ?? "",
+        District_Name: r.District_Name ?? r.DISTNAME ?? r.District ?? "",
+        Year: Number(r.Year),
+        Total_Spending: toNumber(r.Total_Spending ?? r.Total ?? r.Amount ?? r.SumOfACTAMT)
+      })).filter(r => r.Year && r.DISTRICT_N);
 
-        if (!cancelled) {
-          setTotals(t);
-          setObjects(o);
-          setError("");
-        }
-      } catch (e) {
-        console.error("Data load error", e);
-        if (!cancelled) setError("Could not load spending data");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      const o = oRows.map(r => ({
+        DISTRICT_N: r.DISTRICT_N ?? r.DISTRICT ?? r.District_ID ?? "",
+        District_Name: r.District_Name ?? r.DISTNAME ?? r.District ?? "",
+        Year: Number(r.Year),
+        Object_Code: r.Object_Code ?? r.OBJECT ?? "",
+        Object_Description_Long: r.Object_Description_Long ?? r.OBJECTX_LONG ?? r.Object_Long ?? "",
+        Object_Spending: toNumber(r.Object_Spending ?? r.Amount ?? r.SumOfACTAMT)
+      })).filter(r => r.Year && r.DISTRICT_N && r.Object_Description_Long);
+
+      if (loadCancelled.current) return;
+
+      setTotals(t);
+      setObjects(o);
+      setError("");
+    } catch (e) {
+      console.error("Data load error", e);
+      if (!loadCancelled.current) setError("Could not load spending data");
+    } finally {
+      if (!loadCancelled.current) setLoading(false);
     }
-    go();
-    return () => { cancelled = true; };
-  }, []);
+  }, [loadCancelled, setError, setLoading, setObjects, setTotals]);
+
+  useEffect(() => {
+    loadCancelled.current = false;
+    loadSpendingData();
+    return () => {
+      loadCancelled.current = true;
+    };
+  }, [loadSpendingData]);
 
   const districts = useMemo(() => {
     const map = new Map();
@@ -400,11 +406,33 @@ export default function LongitudinalSpending() {
     setSelectedObjects(prev => prev.filter(item => item !== name));
   };
 
-  const handleObjectSelect = (event) => {
-    const { value } = event.target;
-    if (!value) return;
-    addObject(value);
-    setObjectSelectValue("");
+  // When the user types, show datalist suggestions and auto add on exact match
+  const handleObjectInputChange = (event) => {
+    const v = event.target.value;
+    setObjectSelectValue(v);
+    const match = objectOptions.find(
+      (opt) => opt.toLowerCase() === v.trim().toLowerCase()
+    );
+    if (match) {
+      addObject(match);
+      setObjectSelectValue("");
+    }
+  };
+
+  // Allow pressing Enter to add the typed value if it exactly matches an option
+  const handleObjectKeyDown = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      const v = objectSelectValue.trim();
+      if (!v) return;
+      const match = objectOptions.find(
+        (opt) => opt.toLowerCase() === v.toLowerCase()
+      );
+      if (match) {
+        addObject(match);
+        setObjectSelectValue("");
+      }
+    }
   };
 
   return (
@@ -533,22 +561,34 @@ export default function LongitudinalSpending() {
           <label htmlFor="object-filter" className="block text-sm font-semibold text-[var(--text-muted)]">
             Add or remove cost centers
           </label>
-          <select
-            id="object-filter"
-            value={objectSelectValue}
-            onChange={handleObjectSelect}
-            disabled={!objectOptions.length}
-            className="select"
-          >
-            <option value="" disabled>
-              {objectOptions.length ? "Select cost center" : "Loading cost centers"}
-            </option>
-            {objectOptions.map(name => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
+          <div className="search-with-help">
+            <input
+              id="object-filter"
+              className="input input--with-inline-link"
+              type="text"
+              placeholder={objectOptions.length ? "Search cost centers then press Enter" : "Loading cost centers"}
+              value={objectSelectValue}
+              onChange={handleObjectInputChange}
+              onKeyDown={handleObjectKeyDown}
+              list="object-filter-list"
+              disabled={!objectOptions.length}
+              aria-label="Search cost centers"
+            />
+            <a
+              className="inline-help-link"
+              href="https://tea.texas.gov/finance-and-grants/financial-compliance/financial-accountability-system-resource-guide"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Open the TEA Financial Accountability System Resource Guide"
+            >
+              Need Help Interpreting the Cost Centers? Click here to find what they mean
+            </a>
+            <datalist id="object-filter-list">
+              {objectOptions.map(name => (
+                <option key={name} value={name} />
+              ))}
+            </datalist>
+          </div>
           <div className="flex flex-wrap gap-2">
             {selectedObjects.map(name => (
               <button
