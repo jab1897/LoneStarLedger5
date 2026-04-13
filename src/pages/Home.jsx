@@ -191,6 +191,7 @@ export default function Home() {
     <div className="space-y-12">
       <section className="hero">
         <div className="hero-inner">
+          <span className="eyebrow eyebrow--brand">Texas K–12 Transparency</span>
           <h1>
             Follow the <em>money</em> in Texas schools
           </h1>

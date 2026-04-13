@@ -1081,3 +1081,138 @@ a:hover { text-decoration: underline; }
   color: var(--ink-900);
   line-height: 1.4;
 }
+
+/* ------------------------------------------------------------------
+   Mobile tab bar — fixed bottom nav (<md), primary routes with icons.
+   Replaces the hamburger drawer as primary navigation on mobile.
+   ------------------------------------------------------------------ */
+
+.mobile-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--surface-0);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgba(10, 31, 58, 0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0); /* iOS home indicator */
+  display: none; /* desktop hides it */
+}
+.mobile-tabbar__list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mobile-tabbar__item { margin: 0; }
+.mobile-tabbar__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.55rem 0.25rem 0.65rem;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  position: relative;
+  transition: color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-tabbar__link:hover {
+  color: var(--ink-900);
+  text-decoration: none;
+}
+.mobile-tabbar__link.is-active {
+  color: var(--mesquite-600);
+}
+.mobile-tabbar__link.is-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 2.5px;
+  border-radius: 0 0 2px 2px;
+  background: var(--mesquite-600);
+}
+.mobile-tabbar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+.mobile-tabbar__label {
+  line-height: 1;
+}
+
+/* When the tabbar is mounted, reserve bottom space on the main content
+   so nothing sits under the fixed bar on mobile. */
+@media (max-width: 767px) {
+  .mobile-tabbar { display: block; }
+  .app-shell--with-tabbar .app-shell__content {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0) + 1rem);
+  }
+  /* Hide the old hamburger + mobile drawer — tabbar is primary nav now */
+  .menu-toggle { display: none !important; }
+  .site-mobile-nav { display: none !important; }
+  /* Hide the footer — its visual space is filled by the tab bar */
+  .site-footer { display: none; }
+  /* Tighten the top bar so the hero takes the eye */
+  .site-header__inner {
+    padding: 0.5rem 0.875rem;
+    gap: 0.5rem;
+  }
+  .site-brand { font-size: 1.15rem; }
+  .site-controls { gap: 0.5rem; }
+  .site-search { flex: 1 1 auto; min-width: 0; }
+  .site-search .input { min-width: 0; width: 100%; }
+  .btn-subtle { padding: 0.45rem 0.6rem; font-size: 0.85rem; }
+}
+
+/* ------------------------------------------------------------------
+   Mobile hero refinements — tighter spacing, bolder CTA, eyebrow above H1
+   ------------------------------------------------------------------ */
+
+.hero .eyebrow {
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 1.75rem 1rem 1.25rem;
+  }
+  .hero h1 {
+    font-size: clamp(1.85rem, 8vw, 2.5rem);
+    line-height: 1.05;
+  }
+  .lead {
+    font-size: 1rem;
+    color: var(--text-1);
+  }
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.625rem;
+  }
+  .hero-actions .autocomplete,
+  .hero-actions .input {
+    min-width: 0;
+    width: 100%;
+  }
+  .hero-actions .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+  }
+  .hero-actions .btn-text {
+    padding: 0.625rem 0.5rem;
+    font-size: 0.9rem;
+  }
+}

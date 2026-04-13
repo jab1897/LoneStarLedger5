@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import useSearchSuggestions from "../hooks/useSearchSuggestions";
+import MobileTabBar from "./MobileTabBar";
 
 const NAV_LINKS = [
   { to: "/districts", label: "Districts" },
@@ -13,12 +14,13 @@ const NAV_LINKS = [
 
 export default function Layout({ children }) {
   return (
-    <div className="app-shell">
+    <div className="app-shell app-shell--with-tabbar">
       <TopBar />
       <main className="app-shell__content">
         <div className="app-shell__inner">{children}</div>
       </main>
       <Footer />
+      <MobileTabBar />
     </div>
   );
 }
