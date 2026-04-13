@@ -9,6 +9,7 @@ import DataTable from "../ui/DataTable";
 import { loadDistrictsCSV } from "../lib/data";
 import { getCampusesForDistrict } from "../lib/campuses";
 import DistrictSpendingPie from "../components/DistrictSpendingPie";
+import DistrictSpendingTimeline from "../components/DistrictSpendingTimeline";
 
 const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON =
@@ -468,6 +469,11 @@ export default function DistrictDetail() {
         districtId={id}
         districtName={displayName}
         className="mt-6"
+      />
+
+      <DistrictSpendingTimeline
+        districtId={id}
+        districtName={displayName}
       />
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
