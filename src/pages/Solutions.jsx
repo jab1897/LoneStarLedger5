@@ -60,20 +60,40 @@ const sections = [
 
 export default function Solutions() {
   return (
-    <div className="bg-white border rounded-2xl p-6 space-y-6 max-w-3xl">
-      <h1 className="text-2xl font-bold">Solutions</h1>
-      <div className="space-y-8">
-        {sections.map(({ title, paragraphs }) => (
+    <main className="mx-auto max-w-3xl">
+      <article className="section-card editorial-article space-y-4">
+        <header>
+          <span className="eyebrow eyebrow--brand">Editorial · Policy</span>
+          <h1>Solutions</h1>
+          <p className="dek">
+            Eight specific reforms that would make Texas K–12 finance more
+            transparent, accountable, and focused on students.
+          </p>
+        </header>
+
+        {sections.map(({ title, paragraphs }, i) => (
           <section key={title} className="space-y-2">
-            <h2 className="text-xl font-semibold">{title}</h2>
+            <h2>
+              <span
+                aria-hidden="true"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontStyle: "italic",
+                  color: "var(--mesquite-600)",
+                  marginRight: "0.5rem",
+                  fontWeight: 500,
+                }}
+              >
+                {String(i + 1).padStart(2, "0")}.
+              </span>
+              {title}
+            </h2>
             {paragraphs.map((text, index) => (
-              <p key={index} className="text-gray-700">
-                {text}
-              </p>
+              <p key={index}>{text}</p>
             ))}
           </section>
         ))}
-      </div>
-    </div>
+      </article>
+    </main>
   );
 }

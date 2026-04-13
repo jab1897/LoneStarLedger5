@@ -30,6 +30,10 @@ const KEYS = {
     "Per-Pupil Debt",
     "PER_PUPIL_DEBT", "DEBT_PER_STUDENT", "DEBT PER STUDENT",
   ],
+  PER_PUPIL_SPENDING: [
+    "Per-Pupil Spending",
+    "PER_PUPIL_SPENDING", "PER PUPIL SPENDING", "SPENDING_PER_PUPIL",
+  ],
   TEACHER_SALARY: [
     "Average Teacher Salary",
     "AVG_TEACHER_SALARY", "AVERAGE_TEACHER_SALARY", "TEACHER_AVG_SALARY",
@@ -102,6 +106,7 @@ export async function loadDistrictsCSV(csvUrl) {
     ENROLLMENT: pickKey(sample, KEYS.ENROLLMENT),
     DISTRICT_DEBT: pickKey(sample, KEYS.DISTRICT_DEBT),
     PER_PUPIL_DEBT: pickKey(sample, KEYS.PER_PUPIL_DEBT),
+    PER_PUPIL_SPENDING: pickKey(sample, KEYS.PER_PUPIL_SPENDING),
     TEACHER_SALARY: pickKey(sample, KEYS.TEACHER_SALARY),
     PRINCIPAL_SALARY: pickKey(sample, KEYS.PRINCIPAL_SALARY),
     SUPERINTENDENT_SALARY: pickKey(sample, KEYS.SUPERINTENDENT_SALARY),

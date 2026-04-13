@@ -74,7 +74,7 @@ export default function Home() {
       key: "name",
       label: "District",
       format: (v, row) => (
-        <Link to={`/district/${row.id}`} className="text-indigo-700 hover:underline">
+        <Link to={`/district/${row.id}`} className="text-[color:var(--editorial-600)] hover:underline font-semibold">
           {v}
         </Link>
       ),
@@ -108,7 +108,7 @@ export default function Home() {
       key: "name",
       label: "District",
       format: (v, row) => (
-        <Link to={`/district/${row.id}`} className="text-indigo-700 hover:underline">
+        <Link to={`/district/${row.id}`} className="text-[color:var(--editorial-600)] hover:underline font-semibold">
           {v}
         </Link>
       ),
@@ -133,7 +133,7 @@ export default function Home() {
       key: "district",
       label: "District",
       format: (v, row) => (
-        <Link to={`/district/${row.id}`} className="text-indigo-700 hover:underline">
+        <Link to={`/district/${row.id}`} className="text-[color:var(--editorial-600)] hover:underline font-semibold">
           {v}
         </Link>
       ),
@@ -191,7 +191,10 @@ export default function Home() {
     <div className="space-y-12">
       <section className="hero">
         <div className="hero-inner">
-          <h1>Follow the money in Texas schools</h1>
+          <span className="eyebrow eyebrow--brand">Texas K–12 Transparency</span>
+          <h1>
+            Follow the <em>money</em> in Texas schools
+          </h1>
           <p className="lead">Search any district or campus and see spending beside student results.</p>
           <form className="hero-actions" role="search" onSubmit={onHeroSearch}>
             <div className="autocomplete">

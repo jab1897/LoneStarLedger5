@@ -1,23 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,0..100&display=swap');
+
 :root {
-  --brand-700: #0C3A6B;
-  --brand-500: #1F4E79;
-  --brand-100: #E6F0FF;
-  --accent-500: #D97706;
+  /* ===== Ink & Caliche palette =========================================
+     Editorial civic-tech identity: navy "ink" anchored on a warm caliche
+     paper neutral, with a mesquite (rust) warm accent, bluebonnet CTA,
+     and brick-red editorial highlight. The legacy --brand-*, --accent-*
+     names remain so existing rules keep working; the --ink-* / --mesquite-*
+     / --bluebonnet-* / --editorial-* names are the new vocabulary.
+     =================================================================== */
 
-  --surface-0: #FFFFFF;
-  --surface-1: #FBFDFF;
-  --surface-2: #F1F5F9;
+  /* Ink — the navy you write with (primary trust anchor) */
+  --ink-900: #0A1F3A;
+  --ink-700: #16365E;
+  --ink-100: #DCE4F2;
 
-  --text-0: #0F172A;
-  --text-1: #334155;
-  --text-muted: #475569;
+  /* Mesquite — warm Texas rust/terracotta (section accents, KPI rails,
+     outlier indicators on maps, eyebrow text) */
+  --mesquite-600: #9A3A1E;
+  --mesquite-100: #F5E4DA;
 
-  --success-500: #10B981;
-  --danger-500: #DC2626;
-  --warning-500: #F59E0B;
-  --focus-500: #2563EB;
+  /* Bluebonnet — action color, reads on both paper and graphite */
+  --bluebonnet-500: #2750D6;
 
-  /* Data viz palette, Okabe Ito */
+  /* Editorial — muted brick red for anchor links, pull quotes, "why this
+     matters" callouts. Distinct from --danger-500 semantically. */
+  --editorial-600: #B43A2E;
+
+  /* Legacy aliases — same values, old names, so existing rules don't break */
+  --brand-700: var(--ink-900);
+  --brand-500: var(--ink-700);
+  --brand-100: var(--ink-100);
+  --accent-500: var(--mesquite-600);
+
+  /* Surfaces — light mode is warm caliche paper, not pure white */
+  --surface-0: #FDFBF5;
+  --surface-1: #F7F2E8;
+  --surface-2: #EFE7D6;
+
+  /* Text */
+  --text-0: #0A1F3A;
+  --text-1: #3A4560;
+  --text-muted: #5B6577;
+  --text-inverse: #FDFBF5;
+
+  /* Semantic — retuned to sit next to mesquite without clashing */
+  --success-500: #15794D;
+  --danger-500:  #B43A2E;
+  --warning-500: #C78A1A;
+  --focus-500:   #2750D6;
+
+  /* Data viz palette — Okabe-Ito, unchanged (load-bearing in charts) */
   --viz-1: #0072B2;
   --viz-2: #E69F00;
   --viz-3: #56B4E9;
@@ -31,35 +63,56 @@
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  --shadow-1: 0 1px 2px rgba(2, 6, 23, 0.06), 0 1px 1px rgba(2, 6, 23, 0.04);
-  --shadow-2: 0 8px 24px rgba(2, 6, 23, 0.10), 0 2px 6px rgba(2, 6, 23, 0.06);
+  --shadow-1: 0 1px 2px rgba(10, 31, 58, 0.06), 0 1px 1px rgba(10, 31, 58, 0.04);
+  --shadow-2: 0 8px 24px rgba(10, 31, 58, 0.10), 0 2px 6px rgba(10, 31, 58, 0.06);
 
-  --grid-color: rgba(12, 58, 107, 0.06);
-  --bg-tint-1: #F2F7FF;
-  --bg-tint-2: #EEF5FF;
+  --grid-color: rgba(10, 31, 58, 0.05);
+  --bg-tint-1: #F0E8D4;
+  --bg-tint-2: #E8DFC8;
 
-  --border: rgba(2, 6, 23, 0.08);
+  --border: rgba(10, 31, 58, 0.10);
   --pill-bg: var(--surface-2);
   --pill-border: var(--border);
-  --pill-text: #0F172A;
+  --pill-text: var(--ink-900);
+
+  /* Typography */
+  --font-display: "Fraunces", "Georgia", ui-serif, serif;
 }
 
 :root[data-theme="dark"] {
-  --surface-0: #0B1220;
-  --surface-1: #0F172A;
-  --surface-2: #111B2E;
+  /* Graphite — near-black with a whisper of blue, not "dark navy" */
+  --surface-0: #0A0F1A;
+  --surface-1: #121826;
+  --surface-2: #1A2333;
 
-  --text-0: #E5E7EB;
-  --text-1: #CBD5E1;
-  --text-muted: #94A3B8;
+  /* Ink inverts — on dark, ink IS the paper */
+  --ink-900: #E8ECF2;
+  --ink-700: #AFC0DA;
+  --ink-100: rgba(232, 236, 242, 0.12);
 
-  --border: rgba(203, 213, 225, 0.16);
-  --grid-color: rgba(147, 197, 253, 0.08);
-  --bg-tint-1: #0E1A2E;
-  --bg-tint-2: #0B1729;
-  --pill-bg: #FFFFFF;
-  --pill-border: rgba(255, 255, 255, 0.32);
-  --pill-text: #0F172A;
+  /* Warmer tones lifted for dark contrast */
+  --mesquite-600: #E27A4E;
+  --mesquite-100: #3A1E12;
+  --bluebonnet-500: #6A8BFF;
+  --editorial-600: #F07A6A;
+
+  --text-0: #ECEFF5;
+  --text-1: #C8D0DE;
+  --text-muted: #8A95A8;
+  --text-inverse: #0A0F1A;
+
+  --success-500: #4ECB95;
+  --danger-500:  #F07A6A;
+  --warning-500: #F0B659;
+  --focus-500:   #6A8BFF;
+
+  --border: rgba(226, 122, 78, 0.16); /* faint warm border vs pure cool */
+  --grid-color: rgba(226, 122, 78, 0.06); /* the single most identity-making line */
+  --bg-tint-1: #141A2A;
+  --bg-tint-2: #0F1524;
+  --pill-bg: var(--surface-1);
+  --pill-border: var(--border);
+  --pill-text: var(--ink-900);
 }
 
 html, body {
@@ -84,7 +137,7 @@ body {
 }
 
 a {
-  color: var(--brand-700);
+  color: var(--editorial-600);
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
@@ -110,11 +163,14 @@ a:hover { text-decoration: underline; }
 .btn:active { transform: translateY(1px); }
 
 .btn-primary {
-  background: var(--brand-700);
-  color: white;
+  background: var(--bluebonnet-500);
+  color: var(--text-inverse);
   box-shadow: var(--shadow-1);
 }
-.btn-primary:hover { box-shadow: var(--shadow-2); background: var(--brand-500); }
+.btn-primary:hover {
+  box-shadow: var(--shadow-2);
+  background: color-mix(in srgb, var(--bluebonnet-500) 88%, black);
+}
 
 .btn-subtle {
   background: var(--surface-2);
@@ -127,10 +183,10 @@ a:hover { text-decoration: underline; }
 }
 .btn-text {
   background: transparent;
-  color: var(--brand-700);
+  color: var(--editorial-600);
 }
 .btn-text:hover {
-  background-color: rgba(12, 58, 107, 0.08);
+  background-color: color-mix(in srgb, var(--editorial-600) 10%, transparent);
 }
 
 .card-link {
@@ -194,9 +250,18 @@ a:hover { text-decoration: underline; }
   gap: 1rem;
 }
 .hero h1 {
-  font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 1.1;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: clamp(2.25rem, 4.2vw, 3.25rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  color: var(--ink-900);
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--mesquite-600);
+  font-weight: 500;
 }
 .lead { color: var(--text-1); font-size: clamp(1rem, 1.6vw, 1.125rem); }
 .hero-actions {
@@ -303,10 +368,17 @@ a:hover { text-decoration: underline; }
   padding: 0.75rem 1rem;
 }
 .site-brand {
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-weight: 600;
   letter-spacing: -0.01em;
-  font-size: 1.2rem;
-  color: var(--text-0);
+  font-size: 1.3rem;
+  color: var(--ink-900);
+}
+.site-brand .site-brand__accent {
+  color: var(--mesquite-600);
+  font-style: italic;
+  font-weight: 500;
 }
 .site-nav {
   display: none;
@@ -517,8 +589,14 @@ a:hover { text-decoration: underline; }
 .data-table tbody tr:nth-child(even) {
   background-color: var(--surface-1);
 }
+.data-table tbody tr {
+  transition: background-color 150ms ease;
+}
 .data-table tbody tr:hover {
   background-color: var(--brand-100);
+}
+:root[data-theme="dark"] .data-table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--brand-500) 22%, transparent);
 }
 .data-table th button {
   display: inline-flex;
@@ -581,6 +659,560 @@ a:hover { text-decoration: underline; }
   }
 }
 
+/* ------------------------------------------------------------------
+   Phase 3 polish
+   ------------------------------------------------------------------ */
+
+/* Editorial "eyebrow" label above section headings — Fraunces italic,
+   mesquite warm, lower-case tracking for a magazine feel */
+.eyebrow {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: 0.92rem;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--text-muted);
+}
+.eyebrow--brand {
+  color: var(--mesquite-600);
+  font-variation-settings: "SOFT" 50;
+}
+:root[data-theme="dark"] .eyebrow--brand {
+  color: var(--mesquite-600);
+}
+
+/* Section heading with a colored accent bar on the left — now set in
+   Fraunces display for editorial gravitas */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--text-0);
+  line-height: 1.15;
+}
+.section-title::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 1.1em;
+  background: var(--mesquite-600);
+  border-radius: 2px;
+}
+.section-title--accent::before { background: var(--mesquite-600); }
+.section-title--brand::before  { background: var(--bluebonnet-500); }
+.section-title--success::before { background: var(--success-500); }
+
+/* Subsection heading: tighter, smaller, uppercase with faint color dot */
+.subsection-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.2;
+  margin: 0;
+}
+.subsection-title__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--mesquite-600);
+  display: inline-block;
+}
+
+/* Eyebrow + numeric KPI (dense, Bloomberg-style) */
+.kpi--dense {
+  padding: 1rem 1.125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.kpi--dense .label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.kpi--dense .value {
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+.kpi--dense .trend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.kpi--dense .sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+/* A left-edge accent rail (for "estimate" or "special" KPI tiles) */
+.kpi--accent::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--mesquite-600);
+}
+.kpi--brand::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--bluebonnet-500);
+}
+.kpi--editorial::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--editorial-600);
+}
+
+/* Skeleton shimmer */
+@keyframes ll-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background-image: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--surface-1) 50%,
+    var(--surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: ll-shimmer 1.5s linear infinite;
+  color: transparent !important;
+  user-select: none;
+  pointer-events: none;
+}
+.skeleton--text { height: 0.85em; width: 100%; border-radius: 4px; }
+.skeleton--title { height: 1.2em; width: 40%; border-radius: 4px; }
+.skeleton--value { height: 1.8em; width: 65%; border-radius: 6px; }
+.skeleton--chart { height: 320px; width: 100%; border-radius: var(--radius-md); }
+.skeleton--block { height: 100px; width: 100%; border-radius: var(--radius-md); }
+
+/* Chart container surround (consistent spacing + subtle inner frame) */
+.chart-frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-0);
+  padding: 0.75rem;
+}
+
+/* Toast (ephemeral) */
+.toast {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  background: var(--text-0);
+  color: var(--surface-0);
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-2);
+  opacity: 0;
+  animation: ll-toast-in 2s ease both;
+}
+@keyframes ll-toast-in {
+  0% { opacity: 0; transform: translate(-50%, 6px); }
+  10%, 90% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -6px); }
+}
+
+/* Icon button (for Download / Copy link) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-0);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  color: var(--brand-500);
+  border-color: var(--brand-500);
+  background: var(--surface-1);
+}
+.icon-btn:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Sort pills row used above charts */
+.sort-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+.sort-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-0);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+.sort-pill:hover { color: var(--text-0); border-color: var(--text-muted); }
+.sort-pill[aria-pressed="true"] {
+  background: var(--bluebonnet-500);
+  border-color: var(--bluebonnet-500);
+  color: var(--text-inverse);
+}
+
+/* Line chart — draw-on animation (first render only) */
+@keyframes ll-line-draw {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+.chart-line-animate path.recharts-line-curve {
+  stroke-dasharray: 1000;
+  animation: ll-line-draw 900ms ease-out both;
+}
+.chart-line-animate path.recharts-area-area {
+  animation: ll-fade-in 900ms ease-out both;
+}
+@keyframes ll-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+/* ------------------------------------------------------------------
+   Dark-mode compatibility layer for pages that still use raw Tailwind
+   utility colors (bg-white, text-gray-*, border-gray-*, etc.). Rather
+   than refactoring every JSX file, we remap the most common hardcoded
+   utilities to palette tokens when data-theme="dark". Light mode keeps
+   Tailwind defaults — white cards on caliche paper read as newsprint.
+   ------------------------------------------------------------------ */
+
+:root[data-theme="dark"] .bg-white {
+  background-color: var(--surface-1) !important;
+}
+:root[data-theme="dark"] .bg-gray-50,
+:root[data-theme="dark"] .bg-slate-50,
+:root[data-theme="dark"] .bg-gray-100,
+:root[data-theme="dark"] .bg-slate-100 {
+  background-color: var(--surface-2) !important;
+}
+:root[data-theme="dark"] .hover\:bg-gray-50:hover,
+:root[data-theme="dark"] .hover\:bg-slate-50:hover,
+:root[data-theme="dark"] .hover\:bg-gray-100:hover {
+  background-color: var(--surface-2) !important;
+}
+
+:root[data-theme="dark"] .border,
+:root[data-theme="dark"] .border-gray-100,
+:root[data-theme="dark"] .border-gray-200,
+:root[data-theme="dark"] .border-gray-300,
+:root[data-theme="dark"] .border-slate-200 {
+  border-color: var(--border) !important;
+}
+
+:root[data-theme="dark"] .text-gray-900,
+:root[data-theme="dark"] .text-slate-900 {
+  color: var(--text-0) !important;
+}
+:root[data-theme="dark"] .text-gray-800,
+:root[data-theme="dark"] .text-slate-800,
+:root[data-theme="dark"] .text-gray-700,
+:root[data-theme="dark"] .text-slate-700 {
+  color: var(--text-1) !important;
+}
+:root[data-theme="dark"] .text-gray-600,
+:root[data-theme="dark"] .text-slate-600,
+:root[data-theme="dark"] .text-gray-500,
+:root[data-theme="dark"] .text-slate-500,
+:root[data-theme="dark"] .text-gray-400,
+:root[data-theme="dark"] .text-slate-400 {
+  color: var(--text-muted) !important;
+}
+
+/* Indigo/blue utility links → editorial brick (consistent with the new
+   anchor convention). Intentionally not mapping text-white (it stays white
+   — used inside dark tooltips where we want it to remain white). */
+:root[data-theme="dark"] .text-indigo-700,
+:root[data-theme="dark"] .text-indigo-800 {
+  color: var(--editorial-600) !important;
+}
+:root[data-theme="dark"] .bg-indigo-50 {
+  background-color: color-mix(in srgb, var(--bluebonnet-500) 22%, transparent) !important;
+}
+:root[data-theme="dark"] .border-indigo-400,
+:root[data-theme="dark"] .border-blue-400 {
+  border-color: var(--bluebonnet-500) !important;
+}
+:root[data-theme="dark"] .bg-blue-50 {
+  background-color: color-mix(in srgb, var(--bluebonnet-500) 22%, transparent) !important;
+}
+:root[data-theme="dark"] .bg-indigo-600,
+:root[data-theme="dark"] .bg-blue-700,
+:root[data-theme="dark"] .bg-blue-800 {
+  background-color: var(--bluebonnet-500) !important;
+}
+
+/* Dark tooltip / pill backgrounds (bg-gray-900 is used for chart tooltips
+   and should remain a dark pill in both themes) */
+:root[data-theme="dark"] .bg-gray-900 {
+  background-color: var(--ink-900) !important;
+  color: var(--text-inverse) !important;
+}
+
+/* Light-mode niceties: soften the pure-white cards slightly so they sit
+   better against caliche paper without losing their "fresh print" feel */
+.bg-white {
+  /* no-op in light mode; the override above handles dark */
+}
+
+/* ------------------------------------------------------------------
+   Editorial article pages (Solutions, About, WhyNoAmount, ...)
+   A content-width long-form reader with Fraunces display headings
+   and generous body spacing. Apply to the outer <article>.
+   ------------------------------------------------------------------ */
+
+.editorial-article {
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  color: var(--text-0);
+}
+.editorial-article h1,
+.editorial-article h2,
+.editorial-article h3 {
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  color: var(--ink-900);
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.editorial-article h1 {
+  font-size: clamp(1.85rem, 3.6vw, 2.5rem);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+.editorial-article h1::after {
+  content: "";
+  display: block;
+  width: 48px;
+  height: 3px;
+  background: var(--mesquite-600);
+  border-radius: 2px;
+  margin-top: 0.75rem;
+}
+.editorial-article h2 {
+  font-size: 1.45rem;
+  font-weight: 500;
+  color: var(--ink-900);
+  margin-top: 1.5rem;
+}
+.editorial-article h3 {
+  font-size: 1.15rem;
+  font-weight: 500;
+  margin-top: 1.25rem;
+}
+.editorial-article p {
+  color: var(--text-1);
+  margin-bottom: 0.25rem;
+}
+.editorial-article p + p { margin-top: 0.25rem; }
+.editorial-article a {
+  color: var(--editorial-600);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.editorial-article strong { color: var(--text-0); }
+.editorial-article ul { color: var(--text-1); }
+.editorial-article ul li { margin-bottom: 0.375rem; }
+.editorial-article .dek {
+  /* subtitle / deck under the H1 */
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.125rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  margin-top: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+.editorial-article .pullquote {
+  border-left: 3px solid var(--editorial-600);
+  padding: 0.25rem 0 0.25rem 1rem;
+  margin: 1.25rem 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 1.15rem;
+  color: var(--ink-900);
+  line-height: 1.4;
+}
+
+/* ------------------------------------------------------------------
+   Mobile tab bar — fixed bottom nav (<md), primary routes with icons.
+   Replaces the hamburger drawer as primary navigation on mobile.
+   ------------------------------------------------------------------ */
+
+.mobile-tabbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  background: var(--surface-0);
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgba(10, 31, 58, 0.08);
+  padding-bottom: env(safe-area-inset-bottom, 0); /* iOS home indicator */
+  display: none; /* desktop hides it */
+}
+.mobile-tabbar__list {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mobile-tabbar__item { margin: 0; }
+.mobile-tabbar__link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  padding: 0.55rem 0.25rem 0.65rem;
+  text-decoration: none;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  position: relative;
+  transition: color 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-tabbar__link:hover {
+  color: var(--ink-900);
+  text-decoration: none;
+}
+.mobile-tabbar__link.is-active {
+  color: var(--mesquite-600);
+}
+.mobile-tabbar__link.is-active::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 28px;
+  height: 2.5px;
+  border-radius: 0 0 2px 2px;
+  background: var(--mesquite-600);
+}
+.mobile-tabbar__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+.mobile-tabbar__label {
+  line-height: 1;
+}
+
+/* When the tabbar is mounted, reserve bottom space on the main content
+   so nothing sits under the fixed bar on mobile. */
+@media (max-width: 767px) {
+  .mobile-tabbar { display: block; }
+  .app-shell--with-tabbar .app-shell__content {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0) + 1rem);
+  }
+  /* Hide the old hamburger + mobile drawer — tabbar is primary nav now */
+  .menu-toggle { display: none !important; }
+  .site-mobile-nav { display: none !important; }
+  /* Hide the footer — its visual space is filled by the tab bar */
+  .site-footer { display: none; }
+  /* Tighten the top bar so the hero takes the eye */
+  .site-header__inner {
+    padding: 0.5rem 0.875rem;
+    gap: 0.5rem;
+  }
+  .site-brand { font-size: 1.15rem; }
+  .site-controls { gap: 0.5rem; }
+  .site-search { flex: 1 1 auto; min-width: 0; }
+  .site-search .input { min-width: 0; width: 100%; }
+  .btn-subtle { padding: 0.45rem 0.6rem; font-size: 0.85rem; }
+}
+
+/* ------------------------------------------------------------------
+   Mobile hero refinements — tighter spacing, bolder CTA, eyebrow above H1
+   ------------------------------------------------------------------ */
+
+.hero .eyebrow {
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .hero {
+    padding: 1.75rem 1rem 1.25rem;
+  }
+  .hero h1 {
+    font-size: clamp(1.85rem, 8vw, 2.5rem);
+    line-height: 1.05;
+  }
+  .lead {
+    font-size: 1rem;
+    color: var(--text-1);
+  }
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.625rem;
+  }
+  .hero-actions .autocomplete,
+  .hero-actions .input {
+    min-width: 0;
+    width: 100%;
+  }
+  .hero-actions .btn {
+    width: 100%;
+    justify-content: center;
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+  }
+  .hero-actions .btn-text {
+    padding: 0.625rem 0.5rem;
+    font-size: 0.9rem;
+  }
 }
