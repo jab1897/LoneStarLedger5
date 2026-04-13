@@ -1,23 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400..700,0..100&display=swap');
+
 :root {
-  --brand-700: #0C3A6B;
-  --brand-500: #1F4E79;
-  --brand-100: #E6F0FF;
-  --accent-500: #D97706;
+  /* ===== Ink & Caliche palette =========================================
+     Editorial civic-tech identity: navy "ink" anchored on a warm caliche
+     paper neutral, with a mesquite (rust) warm accent, bluebonnet CTA,
+     and brick-red editorial highlight. The legacy --brand-*, --accent-*
+     names remain so existing rules keep working; the --ink-* / --mesquite-*
+     / --bluebonnet-* / --editorial-* names are the new vocabulary.
+     =================================================================== */
 
-  --surface-0: #FFFFFF;
-  --surface-1: #FBFDFF;
-  --surface-2: #F1F5F9;
+  /* Ink — the navy you write with (primary trust anchor) */
+  --ink-900: #0A1F3A;
+  --ink-700: #16365E;
+  --ink-100: #DCE4F2;
 
-  --text-0: #0F172A;
-  --text-1: #334155;
-  --text-muted: #475569;
+  /* Mesquite — warm Texas rust/terracotta (section accents, KPI rails,
+     outlier indicators on maps, eyebrow text) */
+  --mesquite-600: #9A3A1E;
+  --mesquite-100: #F5E4DA;
 
-  --success-500: #10B981;
-  --danger-500: #DC2626;
-  --warning-500: #F59E0B;
-  --focus-500: #2563EB;
+  /* Bluebonnet — action color, reads on both paper and graphite */
+  --bluebonnet-500: #2750D6;
 
-  /* Data viz palette, Okabe Ito */
+  /* Editorial — muted brick red for anchor links, pull quotes, "why this
+     matters" callouts. Distinct from --danger-500 semantically. */
+  --editorial-600: #B43A2E;
+
+  /* Legacy aliases — same values, old names, so existing rules don't break */
+  --brand-700: var(--ink-900);
+  --brand-500: var(--ink-700);
+  --brand-100: var(--ink-100);
+  --accent-500: var(--mesquite-600);
+
+  /* Surfaces — light mode is warm caliche paper, not pure white */
+  --surface-0: #FDFBF5;
+  --surface-1: #F7F2E8;
+  --surface-2: #EFE7D6;
+
+  /* Text */
+  --text-0: #0A1F3A;
+  --text-1: #3A4560;
+  --text-muted: #5B6577;
+  --text-inverse: #FDFBF5;
+
+  /* Semantic — retuned to sit next to mesquite without clashing */
+  --success-500: #15794D;
+  --danger-500:  #B43A2E;
+  --warning-500: #C78A1A;
+  --focus-500:   #2750D6;
+
+  /* Data viz palette — Okabe-Ito, unchanged (load-bearing in charts) */
   --viz-1: #0072B2;
   --viz-2: #E69F00;
   --viz-3: #56B4E9;
@@ -31,35 +63,56 @@
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  --shadow-1: 0 1px 2px rgba(2, 6, 23, 0.06), 0 1px 1px rgba(2, 6, 23, 0.04);
-  --shadow-2: 0 8px 24px rgba(2, 6, 23, 0.10), 0 2px 6px rgba(2, 6, 23, 0.06);
+  --shadow-1: 0 1px 2px rgba(10, 31, 58, 0.06), 0 1px 1px rgba(10, 31, 58, 0.04);
+  --shadow-2: 0 8px 24px rgba(10, 31, 58, 0.10), 0 2px 6px rgba(10, 31, 58, 0.06);
 
-  --grid-color: rgba(12, 58, 107, 0.06);
-  --bg-tint-1: #F2F7FF;
-  --bg-tint-2: #EEF5FF;
+  --grid-color: rgba(10, 31, 58, 0.05);
+  --bg-tint-1: #F0E8D4;
+  --bg-tint-2: #E8DFC8;
 
-  --border: rgba(2, 6, 23, 0.08);
+  --border: rgba(10, 31, 58, 0.10);
   --pill-bg: var(--surface-2);
   --pill-border: var(--border);
-  --pill-text: #0F172A;
+  --pill-text: var(--ink-900);
+
+  /* Typography */
+  --font-display: "Fraunces", "Georgia", ui-serif, serif;
 }
 
 :root[data-theme="dark"] {
-  --surface-0: #0B1220;
-  --surface-1: #0F172A;
-  --surface-2: #111B2E;
+  /* Graphite — near-black with a whisper of blue, not "dark navy" */
+  --surface-0: #0A0F1A;
+  --surface-1: #121826;
+  --surface-2: #1A2333;
 
-  --text-0: #E5E7EB;
-  --text-1: #CBD5E1;
-  --text-muted: #94A3B8;
+  /* Ink inverts — on dark, ink IS the paper */
+  --ink-900: #E8ECF2;
+  --ink-700: #AFC0DA;
+  --ink-100: rgba(232, 236, 242, 0.12);
 
-  --border: rgba(203, 213, 225, 0.16);
-  --grid-color: rgba(147, 197, 253, 0.08);
-  --bg-tint-1: #0E1A2E;
-  --bg-tint-2: #0B1729;
-  --pill-bg: #FFFFFF;
-  --pill-border: rgba(255, 255, 255, 0.32);
-  --pill-text: #0F172A;
+  /* Warmer tones lifted for dark contrast */
+  --mesquite-600: #E27A4E;
+  --mesquite-100: #3A1E12;
+  --bluebonnet-500: #6A8BFF;
+  --editorial-600: #F07A6A;
+
+  --text-0: #ECEFF5;
+  --text-1: #C8D0DE;
+  --text-muted: #8A95A8;
+  --text-inverse: #0A0F1A;
+
+  --success-500: #4ECB95;
+  --danger-500:  #F07A6A;
+  --warning-500: #F0B659;
+  --focus-500:   #6A8BFF;
+
+  --border: rgba(226, 122, 78, 0.16); /* faint warm border vs pure cool */
+  --grid-color: rgba(226, 122, 78, 0.06); /* the single most identity-making line */
+  --bg-tint-1: #141A2A;
+  --bg-tint-2: #0F1524;
+  --pill-bg: var(--surface-1);
+  --pill-border: var(--border);
+  --pill-text: var(--ink-900);
 }
 
 html, body {
@@ -84,7 +137,7 @@ body {
 }
 
 a {
-  color: var(--brand-700);
+  color: var(--editorial-600);
   text-decoration-thickness: 2px;
   text-underline-offset: 3px;
 }
@@ -110,11 +163,14 @@ a:hover { text-decoration: underline; }
 .btn:active { transform: translateY(1px); }
 
 .btn-primary {
-  background: var(--brand-700);
-  color: white;
+  background: var(--bluebonnet-500);
+  color: var(--text-inverse);
   box-shadow: var(--shadow-1);
 }
-.btn-primary:hover { box-shadow: var(--shadow-2); background: var(--brand-500); }
+.btn-primary:hover {
+  box-shadow: var(--shadow-2);
+  background: color-mix(in srgb, var(--bluebonnet-500) 88%, black);
+}
 
 .btn-subtle {
   background: var(--surface-2);
@@ -127,10 +183,10 @@ a:hover { text-decoration: underline; }
 }
 .btn-text {
   background: transparent;
-  color: var(--brand-700);
+  color: var(--editorial-600);
 }
 .btn-text:hover {
-  background-color: rgba(12, 58, 107, 0.08);
+  background-color: color-mix(in srgb, var(--editorial-600) 10%, transparent);
 }
 
 .card-link {
@@ -194,9 +250,18 @@ a:hover { text-decoration: underline; }
   gap: 1rem;
 }
 .hero h1 {
-  font-size: clamp(2rem, 4vw, 3rem);
-  line-height: 1.1;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: clamp(2.25rem, 4.2vw, 3.25rem);
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  color: var(--ink-900);
+}
+.hero h1 em {
+  font-style: italic;
+  color: var(--mesquite-600);
+  font-weight: 500;
 }
 .lead { color: var(--text-1); font-size: clamp(1rem, 1.6vw, 1.125rem); }
 .hero-actions {
@@ -303,10 +368,17 @@ a:hover { text-decoration: underline; }
   padding: 0.75rem 1rem;
 }
 .site-brand {
-  font-weight: 800;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-weight: 600;
   letter-spacing: -0.01em;
-  font-size: 1.2rem;
-  color: var(--text-0);
+  font-size: 1.3rem;
+  color: var(--ink-900);
+}
+.site-brand .site-brand__accent {
+  color: var(--mesquite-600);
+  font-style: italic;
+  font-weight: 500;
 }
 .site-nav {
   display: none;
@@ -591,41 +663,51 @@ a:hover { text-decoration: underline; }
    Phase 3 polish
    ------------------------------------------------------------------ */
 
-/* Small caps "eyebrow" label above section headings */
+/* Editorial "eyebrow" label above section headings — Fraunces italic,
+   mesquite warm, lower-case tracking for a magazine feel */
 .eyebrow {
   display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: 0.92rem;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--text-muted);
 }
 .eyebrow--brand {
-  color: var(--brand-500);
+  color: var(--mesquite-600);
+  font-variation-settings: "SOFT" 50;
 }
 :root[data-theme="dark"] .eyebrow--brand {
-  color: #93C5FD;
+  color: var(--mesquite-600);
 }
 
-/* Section heading with a colored accent bar on the left */
+/* Section heading with a colored accent bar on the left — now set in
+   Fraunces display for editorial gravitas */
 .section-title {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-optical-sizing: auto;
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
   color: var(--text-0);
-  line-height: 1.2;
+  line-height: 1.15;
 }
 .section-title::before {
   content: "";
   display: inline-block;
   width: 3px;
   height: 1.1em;
-  background: var(--brand-500);
+  background: var(--mesquite-600);
   border-radius: 2px;
 }
-.section-title--accent::before { background: var(--accent-500); }
+.section-title--accent::before { background: var(--mesquite-600); }
+.section-title--brand::before  { background: var(--bluebonnet-500); }
 .section-title--success::before { background: var(--success-500); }
 
 /* Subsection heading: tighter, smaller, uppercase with faint color dot */
@@ -645,7 +727,7 @@ a:hover { text-decoration: underline; }
   width: 6px;
   height: 6px;
   border-radius: 999px;
-  background: var(--brand-500);
+  background: var(--mesquite-600);
   display: inline-block;
 }
 
@@ -689,14 +771,21 @@ a:hover { text-decoration: underline; }
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: var(--accent-500);
+  background: var(--mesquite-600);
 }
 .kpi--brand::before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
   width: 3px;
-  background: var(--brand-500);
+  background: var(--bluebonnet-500);
+}
+.kpi--editorial::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--editorial-600);
 }
 
 /* Skeleton shimmer */
@@ -802,9 +891,9 @@ a:hover { text-decoration: underline; }
 }
 .sort-pill:hover { color: var(--text-0); border-color: var(--text-muted); }
 .sort-pill[aria-pressed="true"] {
-  background: var(--brand-500);
-  border-color: var(--brand-500);
-  color: #ffffff;
+  background: var(--bluebonnet-500);
+  border-color: var(--bluebonnet-500);
+  color: var(--text-inverse);
 }
 
 /* Line chart — draw-on animation (first render only) */

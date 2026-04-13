@@ -36,7 +36,7 @@ function TopBar() {
     <header className="site-header">
       <div className="site-header__inner">
         <Link to="/" className="site-brand">
-          LoneStar Ledger
+          LoneStar <span className="site-brand__accent">Ledger</span>
         </Link>
         <button
           type="button"
