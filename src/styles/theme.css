@@ -517,8 +517,14 @@ a:hover { text-decoration: underline; }
 .data-table tbody tr:nth-child(even) {
   background-color: var(--surface-1);
 }
+.data-table tbody tr {
+  transition: background-color 150ms ease;
+}
 .data-table tbody tr:hover {
   background-color: var(--brand-100);
+}
+:root[data-theme="dark"] .data-table tbody tr:hover {
+  background-color: color-mix(in srgb, var(--brand-500) 22%, transparent);
 }
 .data-table th button {
   display: inline-flex;
@@ -579,6 +585,243 @@ a:hover { text-decoration: underline; }
   .hero {
     padding: 2.5rem 1rem 2rem;
   }
+}
+
+/* ------------------------------------------------------------------
+   Phase 3 polish
+   ------------------------------------------------------------------ */
+
+/* Small caps "eyebrow" label above section headings */
+.eyebrow {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.eyebrow--brand {
+  color: var(--brand-500);
+}
+:root[data-theme="dark"] .eyebrow--brand {
+  color: #93C5FD;
+}
+
+/* Section heading with a colored accent bar on the left */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-0);
+  line-height: 1.2;
+}
+.section-title::before {
+  content: "";
+  display: inline-block;
+  width: 3px;
+  height: 1.1em;
+  background: var(--brand-500);
+  border-radius: 2px;
+}
+.section-title--accent::before { background: var(--accent-500); }
+.section-title--success::before { background: var(--success-500); }
+
+/* Subsection heading: tighter, smaller, uppercase with faint color dot */
+.subsection-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  line-height: 1.2;
+  margin: 0;
+}
+.subsection-title__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--brand-500);
+  display: inline-block;
+}
+
+/* Eyebrow + numeric KPI (dense, Bloomberg-style) */
+.kpi--dense {
+  padding: 1rem 1.125rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.kpi--dense .label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.kpi--dense .value {
+  font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+}
+.kpi--dense .trend {
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.kpi--dense .sub {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+/* A left-edge accent rail (for "estimate" or "special" KPI tiles) */
+.kpi--accent::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--accent-500);
+}
+.kpi--brand::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--brand-500);
+}
+
+/* Skeleton shimmer */
+@keyframes ll-shimmer {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background-image: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--surface-1) 50%,
+    var(--surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: ll-shimmer 1.5s linear infinite;
+  color: transparent !important;
+  user-select: none;
+  pointer-events: none;
+}
+.skeleton--text { height: 0.85em; width: 100%; border-radius: 4px; }
+.skeleton--title { height: 1.2em; width: 40%; border-radius: 4px; }
+.skeleton--value { height: 1.8em; width: 65%; border-radius: 6px; }
+.skeleton--chart { height: 320px; width: 100%; border-radius: var(--radius-md); }
+.skeleton--block { height: 100px; width: 100%; border-radius: var(--radius-md); }
+
+/* Chart container surround (consistent spacing + subtle inner frame) */
+.chart-frame {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-0);
+  padding: 0.75rem;
+}
+
+/* Toast (ephemeral) */
+.toast {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 0.65rem 1rem;
+  border-radius: 999px;
+  background: var(--text-0);
+  color: var(--surface-0);
+  font-size: 0.85rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-2);
+  opacity: 0;
+  animation: ll-toast-in 2s ease both;
+}
+@keyframes ll-toast-in {
+  0% { opacity: 0; transform: translate(-50%, 6px); }
+  10%, 90% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -6px); }
+}
+
+/* Icon button (for Download / Copy link) */
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-0);
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+  cursor: pointer;
+}
+.icon-btn:hover {
+  color: var(--brand-500);
+  border-color: var(--brand-500);
+  background: var(--surface-1);
+}
+.icon-btn:focus-visible {
+  outline-offset: 2px;
+}
+
+/* Sort pills row used above charts */
+.sort-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+}
+.sort-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-0);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+.sort-pill:hover { color: var(--text-0); border-color: var(--text-muted); }
+.sort-pill[aria-pressed="true"] {
+  background: var(--brand-500);
+  border-color: var(--brand-500);
+  color: #ffffff;
+}
+
+/* Line chart — draw-on animation (first render only) */
+@keyframes ll-line-draw {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+.chart-line-animate path.recharts-line-curve {
+  stroke-dasharray: 1000;
+  animation: ll-line-draw 900ms ease-out both;
+}
+.chart-line-animate path.recharts-area-area {
+  animation: ll-fade-in 900ms ease-out both;
+}
+@keyframes ll-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {

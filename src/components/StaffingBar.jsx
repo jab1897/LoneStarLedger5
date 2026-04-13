@@ -28,34 +28,64 @@ export default function StaffingBar({ teacherCount, adminCount, tRatio, aRatio }
   return (
     <div>
       <div
-        className="h-6 w-full rounded-full overflow-hidden flex border border-gray-200"
+        className="h-6 w-full rounded-full overflow-hidden flex"
+        style={{
+          border: "1px solid var(--border)",
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.4)",
+        }}
         role="img"
         aria-label={`Staffing split: ${tPct.toFixed(1)}% teachers, ${aPct.toFixed(1)}% administrators`}
       >
         <div
-          style={{ width: `${tPct}%`, background: "var(--viz-1)" }}
+          style={{
+            width: `${tPct}%`,
+            background: "var(--viz-1)",
+            transition: "width 600ms cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
           title={`Teachers: ${num.format(tc)}`}
         />
         <div
-          style={{ width: `${aPct}%`, background: "var(--viz-2)" }}
+          style={{
+            width: `${aPct}%`,
+            background: "var(--viz-2)",
+            transition: "width 600ms cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
           title={`Admin: ${num.format(ac)}`}
         />
       </div>
-      <div className="mt-2 flex flex-col sm:flex-row sm:justify-between gap-1 text-xs text-gray-700">
-        <span>
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+        <div className="flex items-baseline gap-2">
           <span
-            className="inline-block h-2 w-2 rounded-full mr-2 align-middle"
+            className="inline-block h-2 w-2 rounded-full shrink-0"
             style={{ background: "var(--viz-1)" }}
+            aria-hidden="true"
           />
-          Teachers: {num.format(tc)} ({tPct.toFixed(1)}%) · T:S ratio {fmtRatio(tRatio)}
-        </span>
-        <span>
+          <span className="text-[var(--text-muted)] font-medium uppercase tracking-wider">
+            Teachers
+          </span>
+          <span className="tabular-nums font-semibold text-[var(--text-0)]">
+            {num.format(tc)}
+          </span>
+          <span className="text-[var(--text-muted)] tabular-nums">
+            · {tPct.toFixed(1)}% · T:S {fmtRatio(tRatio)}
+          </span>
+        </div>
+        <div className="flex items-baseline gap-2 sm:justify-end">
           <span
-            className="inline-block h-2 w-2 rounded-full mr-2 align-middle"
+            className="inline-block h-2 w-2 rounded-full shrink-0"
             style={{ background: "var(--viz-2)" }}
+            aria-hidden="true"
           />
-          Admin: {num.format(ac)} ({aPct.toFixed(1)}%) · A:S ratio {fmtRatio(aRatio)}
-        </span>
+          <span className="text-[var(--text-muted)] font-medium uppercase tracking-wider">
+            Admin
+          </span>
+          <span className="tabular-nums font-semibold text-[var(--text-0)]">
+            {num.format(ac)}
+          </span>
+          <span className="text-[var(--text-muted)] tabular-nums">
+            · {aPct.toFixed(1)}% · A:S {fmtRatio(aRatio)}
+          </span>
+        </div>
       </div>
     </div>
   );

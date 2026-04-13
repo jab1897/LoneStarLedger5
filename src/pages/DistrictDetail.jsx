@@ -10,6 +10,7 @@ import { loadDistrictsCSV } from "../lib/data";
 import { getCampusesForDistrict } from "../lib/campuses";
 import DistrictSpendingPie from "../components/DistrictSpendingPie";
 import DistrictSpendingTimeline from "../components/DistrictSpendingTimeline";
+import CopyLinkButton from "../ui/CopyLinkButton";
 
 const DISTRICTS_CSV = import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
 const DISTRICTS_GEOJSON =
@@ -425,6 +426,9 @@ export default function DistrictDetail() {
                 <GradeScorePill grade={districtGrade} score={districtScore} />
               </div>
             )}
+            <div className="mt-3">
+              <CopyLinkButton label="Copy link to this district" />
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2 min-w-0">

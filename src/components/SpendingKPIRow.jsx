@@ -1,4 +1,5 @@
 import React from "react";
+import AnimatedValue from "../ui/AnimatedValue";
 import {
   fmtSignedUSDShort,
   fmtSignedPct,
@@ -11,9 +12,9 @@ function trendClass(delta) {
 }
 
 function KpiCard({ label, change, valueFormatter }) {
-  if (!change) {
+  if (!change || !Number.isFinite(change.delta)) {
     return (
-      <div className="card stat-card kpi">
+      <div className="card kpi kpi--dense">
         <span className="label">{label}</span>
         <span className="value">—</span>
       </div>
@@ -23,17 +24,18 @@ function KpiCard({ label, change, valueFormatter }) {
   const tc = trendClass(delta);
   const arrow = tc === "up" ? "▲" : tc === "down" ? "▼" : "·";
   return (
-    <div className="card stat-card kpi">
+    <div className="card kpi kpi--dense">
       <span className="label">{label}</span>
-      <span className="value">{valueFormatter(delta)}</span>
-      <span className={`trend ${tc}`} style={{ fontSize: "0.9rem", fontWeight: 600 }}>
-        <span aria-hidden="true">{arrow}</span> {fmtSignedPct(pct)}
+      <span className="value">
+        <AnimatedValue value={delta} format={valueFormatter} />
+      </span>
+      <span className={`trend ${tc}`}>
+        <span aria-hidden="true">{arrow}</span>
+        {fmtSignedPct(pct)}
       </span>
       {Number.isFinite(startYear) && Number.isFinite(endYear) && (
-        <span
-          style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}
-        >
-          {startYear}→{endYear}
+        <span className="sub">
+          {startYear} → {endYear}
         </span>
       )}
     </div>

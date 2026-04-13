@@ -1,29 +1,31 @@
 import React from "react";
 import { usd } from "../lib/format";
 import { deriveCampusFinance } from "../lib/campusFinance";
+import AnimatedValue from "../ui/AnimatedValue";
 import StaffingBar from "./StaffingBar";
 import ComparisonRow from "./ComparisonRow";
 import CampusCompensationChart from "./CampusCompensationChart";
 
-const fmtUSD = (v) => (Number.isFinite(v) ? usd.format(v) : "—");
+const fmtUSD = (v) =>
+  Number.isFinite(v)
+    ? usd.format(Math.round(v))
+    : "—";
 
-function KpiTile({ label, value, sub }) {
+function KpiTile({ label, rawValue, valueFormatter, sub, accent }) {
+  const hasValue = Number.isFinite(rawValue);
+  const accentClass =
+    accent === "accent" ? "kpi--accent" : accent === "brand" ? "kpi--brand" : "";
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 kpi">
-      <p className="label text-sm text-[var(--text-muted)]">{label}</p>
-      <p
-        className="value font-bold text-gray-900"
-        style={{
-          fontVariantNumeric: "tabular-nums",
-          fontWeight: 700,
-          fontSize: "clamp(1.35rem, 2.6vw, 1.85rem)",
-        }}
-      >
-        {value}
-      </p>
-      {sub && (
-        <p className="text-xs italic text-[var(--text-muted)] mt-1">{sub}</p>
-      )}
+    <div className={`card kpi kpi--dense ${accentClass}`}>
+      <span className="label">{label}</span>
+      <span className="value">
+        {hasValue ? (
+          <AnimatedValue value={rawValue} format={valueFormatter} />
+        ) : (
+          "—"
+        )}
+      </span>
+      {sub && <span className="sub">{sub}</span>}
     </div>
   );
 }
@@ -51,28 +53,46 @@ export default function CampusFinanceSection({
     (Number.isFinite(fin.adminComp) && fin.adminComp > 0);
 
   return (
-    <section className="bg-white border rounded-2xl p-6 space-y-6 section-card">
-      <header className="flex items-baseline justify-between flex-wrap gap-2">
-        <h2 className="text-xl font-bold text-gray-900">Campus Finances</h2>
-        {campusName && (
-          <p className="text-sm text-[var(--text-muted)]">{campusName}</p>
-        )}
+    <section className="section-card space-y-6">
+      <header className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <span className="eyebrow eyebrow--brand">Financials</span>
+          <h2 className="section-title mt-1">Campus Finances</h2>
+          {campusName && (
+            <p className="mt-1 text-sm text-[var(--text-muted)]">{campusName}</p>
+          )}
+        </div>
       </header>
 
       {/* A. KPI tiles */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <KpiTile
           label="Est. Campus Spending"
-          value={fmtUSD(fin.estSpending)}
-          sub="Estimate (district per-pupil × enrollment)"
+          rawValue={fin.estSpending}
+          valueFormatter={fmtUSD}
+          sub="Estimate · district per-pupil × enrollment"
+          accent="accent"
         />
-        <KpiTile label="Avg Teacher Salary" value={fmtUSD(fin.teacherSal)} />
-        <KpiTile label="Avg Admin Salary" value={fmtUSD(fin.adminSal)} />
+        <KpiTile
+          label="Avg Teacher Salary"
+          rawValue={fin.teacherSal}
+          valueFormatter={fmtUSD}
+          accent="brand"
+        />
+        <KpiTile
+          label="Avg Admin Salary"
+          rawValue={fin.adminSal}
+          valueFormatter={fmtUSD}
+          accent="brand"
+        />
       </div>
 
       {/* B. Staffing Breakdown */}
-      <div className="space-y-3">
-        <h3 className="text-base font-semibold text-gray-900">Staffing Breakdown</h3>
+      <div className="space-y-3 pt-1">
+        <h3 className="subsection-title">
+          <span className="subsection-title__dot" />
+          Staffing Breakdown
+        </h3>
         <StaffingBar
           teacherCount={fin.teacherCount}
           adminCount={fin.adminCount}
@@ -82,8 +102,14 @@ export default function CampusFinanceSection({
       </div>
 
       {/* C. Compensation Split */}
-      <div className="space-y-3">
-        <h3 className="text-base font-semibold text-gray-900">Compensation Split</h3>
+      <div className="space-y-3 pt-1">
+        <h3 className="subsection-title">
+          <span
+            className="subsection-title__dot"
+            style={{ background: "var(--viz-1)" }}
+          />
+          Compensation Split
+        </h3>
         {hasAnyCompensation ? (
           <CampusCompensationChart
             teacherComp={fin.teacherComp}
@@ -98,8 +124,12 @@ export default function CampusFinanceSection({
 
       {/* D. How This Campus Compares */}
       {hasDistrict && (
-        <div className="space-y-1">
-          <h3 className="text-base font-semibold text-gray-900">
+        <div className="space-y-3 pt-1">
+          <h3 className="subsection-title">
+            <span
+              className="subsection-title__dot"
+              style={{ background: "var(--accent-500)" }}
+            />
             How This Campus Compares
           </h3>
           <div>
@@ -127,9 +157,11 @@ export default function CampusFinanceSection({
       )}
 
       {/* E. Disclaimer footnote */}
-      <p className="text-xs italic text-[var(--text-muted)]">
-        Spending estimate based on district per-pupil figure. Campus-level
-        expenditure data coming soon.
+      <p className="text-[11px] leading-relaxed text-[var(--text-muted)] pt-2 border-t border-[var(--border)]">
+        <span className="font-semibold">Methodology.</span> Estimated campus
+        spending derives from the parent district's per-pupil figure multiplied
+        by campus enrollment; actual campus-level expenditure data is coming
+        soon.
         {hasDistrict && (
           <>
             {" "}
