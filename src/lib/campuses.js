@@ -1,5 +1,6 @@
 // src/lib/campuses.js
 import Papa from "papaparse";
+import { loadDistrictsCSV } from "./data";
 
 /** Data locations (env-first) */
 const CAMPUSES_CSV =
@@ -16,11 +17,15 @@ String(s ?? "")
 .replace(/[-_\s]+/g, "")
 .replace(/[^a-z0-9]/g, "");
 
-const canonId = (v) =>
+export const canonId = (v) =>
 String(v ?? "")
 .replace(/['"]/g, "")
 .replace(/\D/g, "")        // digits only
 .replace(/^0+/, "");       // strip leading zeros
+
+/** Default fallback path for districts CSV (matches Home/DistrictDetail) */
+const DISTRICTS_CSV =
+import.meta.env.VITE_DISTRICTS_CSV || "/data/Current_Districts_2025.csv";
 
 function buildHeaderMap(row) {
 // de-duplicate headers Papa may rename: "Foo","Foo-1"
@@ -262,7 +267,25 @@ const want = canonId(campusId);
 const { rows, fields } = await loadCampusesCSV();
 const kId = fields.CAMPUS_ID;
 const row = kId ? rows.find((r) => canonId(r[kId]) === want) : null;
-return { row: row || null, fields };
+
+let districtRow = null;
+let districtFields = null;
+if (row && fields.DISTRICT_ID) {
+try {
+const d = await loadDistrictsCSV(DISTRICTS_CSV);
+districtFields = d.fields;
+const wantDist = canonId(row[fields.DISTRICT_ID]);
+if (d.fields?.ID) {
+districtRow =
+d.rows.find((r) => canonId(r[d.fields.ID]) === wantDist) || null;
+}
+} catch (e) {
+// Swallow: section renders without district comparison
+console.warn("[Campuses] district lookup failed:", e?.message || e);
+}
+}
+
+return { row: row || null, fields, districtRow, districtFields };
 }
 
 export async function getCampusFeatureById(campusId) {

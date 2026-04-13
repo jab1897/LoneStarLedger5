@@ -4,6 +4,7 @@ import { getCampusById, getCampusFeatureById } from "../lib/campuses";
 import StatPill from "../ui/StatPill";
 import LeafMap from "../ui/Map";
 import GradeScorePill from "../ui/GradeScorePill";
+import CampusFinanceSection from "../components/CampusFinanceSection";
 import { usd, num } from "../lib/format";
 
 const parsePct = (v) => {
@@ -42,6 +43,8 @@ export default function CampusDetail() {
 
   const [row, setRow] = React.useState(null);
   const [fields, setFields] = React.useState({});
+  const [districtRow, setDistrictRow] = React.useState(null);
+  const [districtFields, setDistrictFields] = React.useState(null);
   const [geom, setGeom] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
@@ -53,10 +56,13 @@ export default function CampusDetail() {
 
     (async () => {
       try {
-        const { row, fields } = await getCampusById(id);
+        const { row, fields, districtRow: dR, districtFields: dF } =
+          await getCampusById(id);
         if (alive) {
           setRow(row);
           setFields(fields);
+          setDistrictRow(dR ?? null);
+          setDistrictFields(dF ?? null);
         }
         try {
           const feat = await getCampusFeatureById(id);
@@ -173,6 +179,16 @@ export default function CampusDetail() {
           </div>
         </div>
       </header>
+
+      {row && (
+        <CampusFinanceSection
+          row={row}
+          fields={fields}
+          districtRow={districtRow}
+          districtFields={districtFields}
+          campusName={name}
+        />
+      )}
 
       <section className="bg-white border rounded-2xl p-6 space-y-3">
         <h2 className="text-xl font-bold text-gray-900">Campus Location</h2>
